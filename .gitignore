@@ -1,0 +1,10 @@
+# Standards documents (ISO/IEC, ETSI, etc.) are copyrighted and must never be
+# committed. Keep local copies under references/ for personal use only.
+references/
+*.pdf
+
+# Local tooling state
+.claude/
+.DS_Store
+*.swp
+*~
