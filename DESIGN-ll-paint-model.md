@@ -109,6 +109,13 @@ Two further properties fall out:
 Shaka Packager's teletext path is a working implementation of the paint model — right up
 to the point where it has to write MP4, at which point it throws the model away.
 
+All the mechanisms below arrived in upstream Shaka Packager as a single change —
+PR #1535, merged March 2026 — written by this document's author: the `kCueStart` /
+`kCueEnd` roles, the video-clock heartbeat, the cropping of ongoing cues at segment
+boundaries, and `ttx_cue_duration_placeholder`. What follows is a description of
+workarounds chosen from inside a packager, not an inference from reading someone
+else's source.
+
 **The open-ended cue is already the internal representation.** `TextSampleRole`
 (`packager/media/base/text_sample.h:118`) defines:
 
@@ -1036,6 +1043,9 @@ included in this repository.
 - moq-transport PR #1621 "Forbid relays from lying about LARGEST_OBJECT":
   https://github.com/moq-wg/moq-transport/pull/1621 — closing issue #1386:
   https://github.com/moq-wg/moq-transport/issues/1386
+- Shaka Packager PR #1535, DVB-Teletext heartbeat and segment alignment with video/audio
+  (the change that introduced the behaviour described in §0.3):
+  https://github.com/shaka-project/shaka-packager/pull/1535
 - Shaka Packager sources cited in §0.3:
   [`text_sample.h`](https://github.com/shaka-project/shaka-packager/blob/main/packager/media/base/text_sample.h),
   [`es_parser_teletext.h`](https://github.com/shaka-project/shaka-packager/blob/main/packager/media/formats/mp2t/es_parser_teletext.h),
