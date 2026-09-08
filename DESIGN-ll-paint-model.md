@@ -439,7 +439,8 @@ the receiver confines presentation to each sample, so an open-ended `<p begin="�
 restated in every sample is already the paint model emulated by restatement; under §4's
 amendment the restatement is no longer needed. Either way every restatement is **byte-
 identical**, so §5.9(3)'s redundancy flag fires on each one and a receiver can skip the
-parse. That is the parse-rate win of §9.1, with **no spec change** and no new box. The bytes are still wasted; §2 and §6 fix that.
+parse. That is the parse-rate win of §9.1, with **no spec change** and no new box. The
+bytes are still wasted; §2 and §6 fix that.
 
 The "redundant" marking is 14496-12's, not 14496-30's own: §5.9(3) names no field. It is
 the sample dependency flags of 14496-12 §8.6.4 — in `sdtp` for a plain file, in the
@@ -999,9 +1000,9 @@ LOCMAF as specified. Text profiles are unaffected, which is what this design tar
 
 ## 13. Prototype plan
 
-Moved to [`PROTOTYPE.md`](PROTOTYPE.md): the steps, what to measure, the test environments
-(livesim2 for DASH, moqlivemock and warp-player for MoQ), the player fork points in dash.js
-and shaka, and which of the questions in §12 each step answers.
+Moved to [`PROTOTYPE.md`](PROTOTYPE.md): the steps, what to measure, the test
+environments (livesim2 for DASH, moqlivemock and warp-player for MoQ), the player fork
+points in dash.js and shaka, and which of the questions in §12 each step answers.
 
 ## 14. References
 
