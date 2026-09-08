@@ -106,9 +106,11 @@ Two rules. One is already permitted; the other is the change.
 a begin time outside the fragment. §5.9(3) permits the same content in adjacent samples
 and lets an identical document be marked redundant. EBU Tech 3381 §6 requires content
 overlapping the sample to be present; DVB-DASH (TS 103 285) §11.7 says times need not be
-truncated; CMAF adds nothing. Only packager habit clips `begin` and `end` to the segment,
-and that clipping is what makes consecutive payloads differ. Unclipped, a restated cue is
-byte-identical, the redundancy flag fires, and the receiver skips the parse.
+truncated; CMAF adds nothing. Only packager habit clips `begin` and `end` to the
+segment, and that clipping is what makes consecutive payloads differ. Unclipped, a
+restated cue is byte-identical, the packager can mark it redundant —
+`sample_has_redundancy` in the sample flags, 14496-12 §8.6.4 — and the receiver may
+discard it and extend the previous sample.
 
 **A document stays active until the next document, or until the maximum period of
 activation (MPA) expires.** Today §5.9(4) confines a document to its sample's duration.

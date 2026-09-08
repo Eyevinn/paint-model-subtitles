@@ -439,8 +439,19 @@ the receiver confines presentation to each sample, so an open-ended `<p begin="�
 restated in every sample is already the paint model emulated by restatement; under §4's
 amendment the restatement is no longer needed. Either way every restatement is **byte-
 identical**, so §5.9(3)'s redundancy flag fires on each one and a receiver can skip the
-parse. That is the parse-rate win of §9.1, with **no spec change** and no new box. The
-bytes are still wasted; §2 and §6 fix that.
+parse. That is the parse-rate win of §9.1, with **no spec change** and no new box. The bytes are still wasted; §2 and §6 fix that.
+
+The "redundant" marking is 14496-12's, not 14496-30's own: §5.9(3) names no field. It is
+the sample dependency flags of 14496-12 §8.6.4 — in `sdtp` for a plain file, in the
+`sample_flags` of `trun` or the `default_sample_flags` of `tfhd` for fragments — set to
+`sample_depends_on = 2` and `sample_has_redundancy = 1`. Every `stpp` sample already has
+the first, since §5.6 makes them all sync samples; the second is the only addition. For
+tracks that are not video, audio or hint, §8.6.4 then says such a sample *"can be
+discarded, and its duration added to the duration of the preceding one"* once a sync
+sample has been processed. That is skip-and-extend in the base standard, for the
+byte-identical case. The field's own definition is about redundant *coding* within a
+sample, the video sense; it is this non-audiovisual rule that turns it into "this sample
+repeats the previous one". Whether players act on it is §12 question 8.
 
 Two properties follow that might look like problems and are not. Documents stay tied to
 this track's timeline, so a re-origin or DVR re-base that shifts the timeline must either
