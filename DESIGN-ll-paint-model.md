@@ -944,13 +944,22 @@ P-samples at `U` + no-change boxes for the remaining 2.85 parts per second.
 | + unclipped documents (§3) + shared dictionary (`RESEARCH.md` E1) | 250 ms | **~4.2 kbps** (floor-bound) |
 | MoQ + LOCMAF, `wvtt`, frame-rate cadence (§11.2) | 40 ms | **~2.6 kbps** |
 
-Effort ordering over HTTP at video-part cadence:
+Effort ordering over HTTP, **each step at the same 250 ms part cadence** so that the
+cadence is not doing the mechanism's work:
 
-- no-change box alone: 280 → 16 kbps (**18×**)
+- a full document per part, today's chunked-and-clipped carriage: ~45 kbps
+- no-change box alone: 45 → 16 kbps (**2.8×**)
 - plus Layer 2 head/body split: 16 → 11 kbps (**1.4×** at this `U`, and rising with
   `U` — §5.2)
 - plus unclipped documents and dictionary: `wvtt` 4.7 → 4.2 kbps (**1.1×**,
   container-floor bound)
+
+Held instead at video's 40 ms, the same two steps run ~280 → 37 → 33 kbps: the
+mechanism earns more the finer the cadence, 8.6× rather than 4.0×, but the container
+floor rises with it — 24 kbps of the 33 is `moof`+`mdat` at 25 parts per second — and
+sets the answer on its own. That floor, not the payload, is what §11.1 removes. The
+table's 280 against 16 spans both a cadence change and a mechanism change, so read it as
+a before-and-after of deployments rather than as this mechanism's gain.
 
 **The I-sample is the dominant term for `stpp`, which a coarser document estimate
 obscures.** A full document once per segment is 1273 B / 2 s = **5.1 kbps** against a
