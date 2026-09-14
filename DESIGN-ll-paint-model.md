@@ -1150,19 +1150,26 @@ LOCMAF as specified. Text profiles are unaffected, which is what this design tar
 3. **Is a subtitle `PART-TARGET` different from video's deployed anywhere?** The spec
    appears to permit it and no cross-rendition constraint was found in bis-15, but real
    players may assume alignment.
-4. **Do deployed renderers handle a begin earlier than the sample** as 14496-30 Figure 1
-   describes — presenting as if seeked into the document — or do some treat the sample
-   start as document time zero, Smooth Streaming style? *Partly answered.* Neither
-   dash.js nor shaka takes the sample start as time zero, so the Smooth Streaming
-   reading is not a live risk in either. Shaka does clip, but to the **segment** rather
-   than the sample: `Mp4TtmlParser` hands one segment-level time context to every sample
-   and `TtmlTextParser` applies `max(start, segmentStart)` / `min(end, segmentEnd)`.
-   With one sample per segment the two coincide; with several they do not, and a cue
-   with no `end` is held to the end of the segment instead of its own chunk, leaving a
-   stale caption on top of the next one. Measured on a chunked stream: three cues per 2
-   s segment, two of them a full 2 s, two captions on screen at once. So §3.2 is not
-   free to adopt today — it needs a fix in shaka first. Other renderers remain to be
-   checked.
+4. ~~**Do deployed renderers handle a begin earlier than the sample** as 14496-30
+   Figure 1 describes — presenting as if seeked into the document — or do some treat the
+   sample start as document time zero, Smooth Streaming style?~~ *Answered for both
+   open-source players, and what it leaves behind is a fix rather than a question.*
+   Neither dash.js nor shaka takes the sample start as time zero, so the Smooth
+   Streaming reading is not a live risk in either. Shaka does clip, but to the
+   **segment** rather than the sample: `Mp4TtmlParser` hands one segment-level time
+   context to every sample and `TtmlTextParser` applies `max(start, segmentStart)` /
+   `min(end, segmentEnd)`. With one sample per segment the two coincide; with several
+   they do not, and a cue with no `end` is held to the end of the segment instead of its
+   own chunk, leaving a stale caption on top of the next one. Measured on a chunked
+   stream: three cues per 2 s segment, two of them a full 2 s, two captions on screen at
+   once.
+
+   The fix is narrow — give `TtmlTextParser` the containing sample's start and end,
+   which the `Mp4TtmlParser` loop already has, instead of the segment's — but until it
+   lands upstream, §3.2 is safe to **emit** and unsafe to **render** on shaka, so "needs
+   no player change" holds only where one sample fills a segment. Still open: landing
+   that fix, and the renderers nobody has measured — native TV-SoC parsers above all,
+   where the same segment-for-sample confusion is likeliest and hardest to see.
 5. **What has the ISO BMFF systems group produced** on CMAF Annex F's *"no generally
    supported semantic to represent 'missing' media in a track"* since 2023?
 6. **Does a subtitle rendition at video's `PART-TARGET` create playlist-reload

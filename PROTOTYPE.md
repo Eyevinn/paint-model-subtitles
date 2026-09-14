@@ -33,7 +33,8 @@ exists is marked below.
    source as the baseline.
 3. **Stop clipping, measured alone.** On the baseline stream, compare the
    identical-document rate and compression with clipped and unclipped `begin`/`end`
-   (§3.2). Needs no player change and no new box. **Done**, in [livesim2
+   (§3.2). Needs no new box and nothing on the sending side; rendering it correctly on
+   shaka needs the fix of §12 question 4. **Done**, in [livesim2
    #337](https://github.com/Dash-Industry-Forum/livesim2/pull/337): the generated `stpp`
    and `wvtt` tracks are chunked at the video chunk cadence, cues keep their true
    `begin`, an `end` appears only in the fragment where the cue ends, and every
