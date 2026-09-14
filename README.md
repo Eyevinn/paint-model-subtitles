@@ -1,7 +1,11 @@
 # Paint-model subtitles for LL-DASH, LL-HLS, and MoQ
 
-A proposal for carrying text subtitles (`stpp`/IMSC and `wvtt`) at low latency
-without sending a complete document per chunk. Published to collect comments
+Low-latency streaming forces a choice on subtitles: send a complete IMSC
+document every chunk — ~280 kbps and 25 XML parses a second — or let the text
+fall up to a segment behind the picture. This proposal ends the choice with an
+8-byte "nothing changed" sample. IMSC and WebVTT are unchanged, a teletext or
+live-subtitling source reaches the player at video's own cadence, and a client
+parses only when the words actually change. Published to collect comments
 before any standards contribution.
 
 ## The proposal
