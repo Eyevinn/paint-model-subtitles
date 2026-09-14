@@ -170,6 +170,45 @@ fabricated. Whether `--ts_ttx_heartbeat_shift`'s "too small → cues absent" fai
 softens — a late cue could be emitted in a later chunk with its own start time rather
 than being dropped for want of an open segment — is worth testing rather than assuming.
 
+### 0.4 Three costs, and which mechanism moves which
+
+The goal is efficient low-latency subtitles derived from a paint-model source. That is
+three separate costs, and no single mechanism in this document moves all three:
+
+- **Latency** — how far the subtitle track runs behind video, and how long a converter
+  must hold a cue whose end it does not yet know (§0.1).
+- **Bitrate** — bytes on the wire for a track whose content changes every ~1.5 s, the
+  teletext cadence of §5.1 and the update rate §9's budget is built on.
+- **Receiver parsing** — XML parses per second, the binding cost on a TV system on chip
+  (§9.1).
+
+| | latency | bitrate | receiver parsing |
+|---|---|---|---|
+| Unchunked subtitles, the DASH-IF advice | **bad** — up to a segment behind | good | good |
+| Chunked and clipped, as today | good | **bad** — a document per chunk | **bad** — a parse per chunk |
+| Unclipped, open-ended (§3.2, §4) | good | bad | *intended* good — but see §12.8 |
+| …with `rsot` (§3.6) | good | bad | unchanged, but on a normative footing |
+| No-change samples (§2) | good | **good** — 8 B per unchanged fragment | **good** — a parse per change |
+| …with Layer 2 (§6) | good | better as updates get faster | unchanged |
+
+Read down the columns rather than across the rows. **Open-ended intervals are what
+remove the latency**, and only they do: a packager that never waits for an end it does
+not know can emit a cue the moment the source paints it. That half needs no new
+signalling on the sending side and is implemented today (§3.2). **Only the no-change box
+removes the bytes** — §3.6 shows that even 14496-12's newest mechanism, aimed squarely
+at this case, still transmits the repeated document in full. It does not remove all of
+them: `stpp` still restates a whole document once per segment so a receiver can tune in,
+~5.1 kbps and 46 % of the Layer 1+2 row, and an idle track pays that head with nothing on
+screen (§9). Only moving the `<head>` into the sample entry, where `wvtt` already keeps
+it, reaches those bytes — which is §8's argument. And **the parse saving is the
+receiver's to take**: restatement plus the redundancy flag makes it available, but §12.8
+found that neither open-source player reads the flag, so it is not being taken.
+
+This is why the two halves are worth adopting separately. Unclipped, open-ended
+documents fix the latency now, at today's bitrate and with no new 4CC. The no-change
+sample is what turns the cadence from something paid for per chunk into something chosen
+freely.
+
 ## 1. Why sparse is the wrong answer over HTTP
 
 ### 1.1 LL-HLS mandates the cadence
