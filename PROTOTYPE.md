@@ -5,6 +5,9 @@ How to try the paint-model design and measure it. The design itself is in
 [`DESIGN-ll-paint-model.md`](DESIGN-ll-paint-model.md). Section numbers below refer to
 the full notes.
 
+**Status.** Step 3 is done and steps 1 and 4 are partly done; the rest is plan. What
+exists is marked below.
+
 ## 1. What to measure
 
 - **Bytes per second** for the subtitle track, against the §9 table: naive chunked
@@ -20,18 +23,34 @@ the full notes.
 
 1. **ISOBMFF library.** Add the `stpc` and `wvtc` sample entries and the `ttmn`, `ttmb`
    and `vttn` boxes to mp4ff, write multi-sample fragments (I-sample plus no-change
-   samples) and confirm they round-trip with correct sample times.
+   samples) and confirm they round-trip with correct sample times. *Not done.* mp4ff
+   does now carry `rsot` (§3.6), which is the other mechanism rather than a step towards
+   this one: https://github.com/Eyevinn/mp4ff/pull/589
 2. **Generator.** A paint-model subtitle track from a synthetic source whose text changes
    every N seconds: an I-sample per segment, a document per change — for `stpp` one
    document per part with true `begin` and `end`, for `wvtt` a split part — and a
    no-change sample per chunk at cadence `C`. Produce today's packaging from the same
    source as the baseline.
 3. **Stop clipping, measured alone.** On the baseline stream, compare the
-   identical-document rate and compression with clipped and unclipped `begin`/`end` (§3.2).
-   Needs no player change and no new box.
-4. **Player fork.** dash.js and shaka: accept the new codecs strings, apply the paint rule
-   (a document stays active until the next one or MPA), handle `ttmn` and `vttn`, and
-   count parser calls. First probe what the unmodified players do with the new tracks.
+   identical-document rate and compression with clipped and unclipped `begin`/`end`
+   (§3.2). Needs no player change and no new box. **Done**, in [livesim2
+   #337](https://github.com/Dash-Industry-Forum/livesim2/pull/337): the generated `stpp`
+   and `wvtt` tracks are chunked at the video chunk cadence, cues keep their true
+   `begin`, an `end` appears only in the fragment where the cue ends, and every
+   byte-identical restatement is marked `sample_depends_on=2` +
+   `sample_has_redundancy=1`. At 2 s segments and 200 ms chunks, eight of ten chunks per
+   segment are identical restatements. Bytes per 2 s segment on `testpic_2s`: `stpp`
+   1745 B unchunked against 15922 B chunked (~7.0 against ~63.7 kbps), `wvtt` 282 B
+   against 1582 B (~1.1 against ~6.3 kbps) — a second data point beside §9's broadcast
+   measurements, on a ~1.6 kB synthetic document.
+4. **Player fork.** dash.js and shaka: accept the new codecs strings, apply the paint
+   rule (a document stays active until the next one or MPA), handle `ttmn` and `vttn`,
+   and count parser calls. First probe what the unmodified players do with the new
+   tracks. *The probe is done for unclipped chunked tracks*, against livesim2 #337, and
+   answers §12 questions 4 and 8: dash.js renders them correctly, one cue per real cue;
+   shaka clips to the segment rather than the sample and shows two captions at once;
+   neither reads the sample flags, so both re-parse every sample. The fork itself is not
+   started.
 5. **Layer 2.** `ttmb` body samples, `<head>` splicing from the segment's I-sample, and
    the non-sync flags (§6).
 6. **Real captures.** Teletext, DVB subtitles and CTA-608, not subtitle files: measure
@@ -104,9 +123,9 @@ Both players parse text tracks in JavaScript, outside MSE, so the changes are lo
 | 1. What Shaka Packager emits from teletext at LL chunk sizes | 6 |
 | 2. What receivers do with an unrecognised no-change sample | 4 |
 | 3, 6. Subtitle `PART-TARGET` and playlist-reload contention in LL-HLS | later, HLS tooling |
-| 4. Receivers and a `begin` earlier than the sample | 4 |
+| 4. Receivers and a `begin` earlier than the sample | 4 — **partly answered** |
 | 7. VOD/DVR rewrite of no-change samples | 2 |
-| 8. Redundancy flag and identical-document detection | 3, 4 |
+| 8. Redundancy flag and identical-document detection | 3, 4 — **answered** |
 | 9. LOCMAF chunk encoding inside an LL-DASH response | 7 |
 
 ## Links

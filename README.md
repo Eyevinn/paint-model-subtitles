@@ -62,7 +62,14 @@ packaging expensive.
 Early draft. Nothing here has been submitted to MPEG, DASH-IF, W3C TTWG (Timed
 Text Working Group), or the IETF MoQ (Media over QUIC) working group. The 4CCs
 used (`stpc`, `wvtc`, `ttmn`, `ttmb`, `vttn`) are placeholders and are
-not registered. No prototype exists yet; `PROTOTYPE.md` is the plan.
+not registered.
+
+The half that needs no new signalling — unclipped `begin`, an `end` written only in the
+fragment where the cue ends, and the redundancy marking — is implemented and serving
+live streams in [livesim2](https://github.com/Dash-Industry-Forum/livesim2/pull/337),
+which chunks its generated `stpp` and `wvtt` tracks at the video chunk cadence. Nothing
+in §2 (the no-change box) or §4 (the activation rule) is implemented anywhere.
+`PROTOTYPE.md` says what is measured and what is not.
 
 ## How to comment
 
