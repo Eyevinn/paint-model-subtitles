@@ -1,5 +1,10 @@
 # Paint-model subtitles for LL-DASH, LL-HLS, and MoQ
 
+![Seven subtitle parts in a row along a time axis: a complete document of about
+1.3 kB is sent only in the parts where the words change, and an 8-byte no-change
+sample in the four parts where they do
+not.](figures/paint-model-cadence.svg)
+
 Low-latency streaming forces a choice on subtitles: send a complete IMSC
 document every chunk — ~280 kbps and 25 XML parses a second — or let the text
 fall up to a segment behind the picture. This proposal ends the choice with an
@@ -7,6 +12,13 @@ fall up to a segment behind the picture. This proposal ends the choice with an
 live-subtitling source reaches the player at video's own cadence, and a client
 parses only when the words actually change. Published to collect comments
 before any standards contribution.
+
+The changes are small, and they land in one standard. ISO/IEC 14496-30 gains
+one rule — a document stays active until the next one supersedes it — and new
+sample entries to carry the 8-byte box. ISOBMFF, CMAF and HLS need nothing. The
+half that removes the latency needs no spec change at all: it is permitted
+today, and already serving live streams in
+[livesim2](https://github.com/Dash-Industry-Forum/livesim2/pull/337).
 
 ## The proposal
 
@@ -35,9 +47,8 @@ could cut to about 10 bytes. Over MoQ with LOCMAF that is the native form: a
 frame-level subtitle update costs about 10 bytes, and a track at 25 fps about 2
 kbps.
 
-ISOBMFF, CMAF, and HLS need no changes. `DESIGN.md` is the short design; the
-full notes hold the rationale and budgets, and `ALTERNATIVES.md` the roads not
-taken.
+`DESIGN.md` is the short design; the full notes hold the rationale and budgets,
+and `ALTERNATIVES.md` the roads not taken.
 
 ## The problem
 

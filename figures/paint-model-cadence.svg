@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1881 882" width="1881" height="882" role="img" aria-label="Seven subtitle parts in a row: a new document is sent only when the text changes, otherwise an 8-byte no-change sample. A brush marks each paint event.">
+  <rect width="1881" height="882" fill="#ffffff"/>
+  <g id="time-axis">
+    <line x1="46" y1="822" x2="1814" y2="822" stroke="#64748b" stroke-width="4"/>
+    <polygon points="1835,822 1811,811 1811,833" fill="#64748b"/>
+    <text x="46" y="868" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="30" font-weight="600" fill="#334155" letter-spacing="3">time</text>
+  </g>
+  <g id="cards">
+    <g transform="matrix(0.7 0.3 0 1 95.9 470.2)">
+      <rect x="7" y="10" width="440.0" height="124.0" rx="10" fill="#dde5ec"/>
+      <rect width="440.0" height="124.0" rx="10" fill="#133b5c" stroke="#0c2942" stroke-width="2"/>
+      <text x="220" y="74" text-anchor="middle" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="34" font-weight="500" fill="#ffffff">low</text>
+      <g transform="translate(34 8) rotate(35)">
+        <rect x="-118" y="-8.5" width="66" height="17" rx="8.5" fill="#c8813c"/>
+        <rect x="-56" y="-13" width="28" height="26" rx="3" fill="#b9c5d1"/>
+        <polygon points="-30,-15 -30,15 -6,9 4,0 -6,-9" fill="#2f6ea8"/>
+      </g>
+      <text x="220" y="168" text-anchor="middle" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="22" fill="#64748b">document · ~1.3 kB</text>
+    </g>
+    <g transform="matrix(0.7 0.3 0 1 334.5 414.2)">
+      <rect width="440.0" height="124.0" rx="10" fill="none" stroke="#8496a8" stroke-width="2.5" stroke-dasharray="12 9"/>
+      <text x="220" y="168" text-anchor="middle" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="22" fill="#64748b">no change · 8 B</text>
+    </g>
+    <g transform="matrix(0.7 0.3 0 1 573.1 358.2)">
+      <rect width="440.0" height="124.0" rx="10" fill="none" stroke="#8496a8" stroke-width="2.5" stroke-dasharray="12 9"/>
+      <text x="220" y="168" text-anchor="middle" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="22" fill="#64748b">no change · 8 B</text>
+    </g>
+    <g transform="matrix(0.7 0.3 0 1 811.7 302.2)">
+      <rect x="7" y="10" width="440.0" height="124.0" rx="10" fill="#dde5ec"/>
+      <rect width="440.0" height="124.0" rx="10" fill="#133b5c" stroke="#0c2942" stroke-width="2"/>
+      <text x="220" y="74" text-anchor="middle" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="34" font-weight="500" fill="#ffffff">low latency</text>
+      <g transform="translate(34 8) rotate(35)">
+        <rect x="-118" y="-8.5" width="66" height="17" rx="8.5" fill="#c8813c"/>
+        <rect x="-56" y="-13" width="28" height="26" rx="3" fill="#b9c5d1"/>
+        <polygon points="-30,-15 -30,15 -6,9 4,0 -6,-9" fill="#2f6ea8"/>
+      </g>
+      <text x="220" y="168" text-anchor="middle" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="22" fill="#64748b">document · ~1.3 kB</text>
+    </g>
+    <g transform="matrix(0.7 0.3 0 1 1050.3 246.2)">
+      <rect width="440.0" height="124.0" rx="10" fill="none" stroke="#8496a8" stroke-width="2.5" stroke-dasharray="12 9"/>
+      <text x="220" y="168" text-anchor="middle" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="22" fill="#64748b">no change · 8 B</text>
+    </g>
+    <g transform="matrix(0.7 0.3 0 1 1288.9 190.2)">
+      <rect width="440.0" height="124.0" rx="10" fill="none" stroke="#8496a8" stroke-width="2.5" stroke-dasharray="12 9"/>
+      <text x="220" y="168" text-anchor="middle" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="22" fill="#64748b">no change · 8 B</text>
+    </g>
+    <g transform="matrix(0.7 0.3 0 1 1527.5 134.2)">
+      <rect x="7" y="10" width="440.0" height="124.0" rx="10" fill="#dde5ec"/>
+      <rect width="440.0" height="124.0" rx="10" fill="#133b5c" stroke="#0c2942" stroke-width="2"/>
+      <text x="220" y="74" text-anchor="middle" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="34" font-weight="500" fill="#ffffff">low latency subtitles</text>
+      <g transform="translate(34 8) rotate(35)">
+        <rect x="-118" y="-8.5" width="66" height="17" rx="8.5" fill="#c8813c"/>
+        <rect x="-56" y="-13" width="28" height="26" rx="3" fill="#b9c5d1"/>
+        <polygon points="-30,-15 -30,15 -6,9 4,0 -6,-9" fill="#2f6ea8"/>
+      </g>
+      <text x="220" y="168" text-anchor="middle" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="22" fill="#64748b">document · ~1.3 kB</text>
+    </g>
+  </g>
+</svg>
