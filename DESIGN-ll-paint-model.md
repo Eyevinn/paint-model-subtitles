@@ -543,6 +543,70 @@ That is the entire paint model, normatively specified: a document with *no timin
 all*, started by the wire, ended by the next document or MPA. Maximally
 position-independent — there is no timestamp left to vary, and nothing to clip.
 
+### 3.6 14496-12:2026 adds `rsot`, and it stops exactly here
+
+ISO/IEC 14496-12:2026 §8.8.18 adds the **`RedundantSampleOriginalTimingBox`** (`rsot`),
+a `TrackFragmentBox` child, and its NOTE 1 names this document's case almost in its
+words:
+
+> In adaptive streaming context where media segments of fixed duration are not aligned
+> with variable frame rate media such as **text**, possible **duplicated redundant
+> samples** may happen at segment boundaries; in such cases, the
+> RedundantSampleOriginalTimingBox information allows rebuilding exact timing of the
+> original sample with shorten duration, or the timing of the redundant sample when
+> seeking or tune-in happens at this sample.
+
+Two optional fields, selected by flags. `rsot_elapsed_duration` (0x2) says the first
+sample of the fragment is a copy of the previous one and has already been presented for
+that long; `rsot_original_duration` (0x1) says the fragment's last sample was truncated
+to fit and gives the duration it was authored with. The elapsed-duration flag carries a
+**normative requirement and a normative receiver rule**:
+
+> When flag rsot_elapsed_duration is set, the first sample of the track fragment
+> **shall** have in its associated sample_flags the value **sample_depends_on=2** and
+> the value **sample_has_redundancy=1**… If no previous sample was received for this
+> track (tune in), the first sample is processed at its sample decode time as if it was
+> being presented for the indicated elapsed_duration. Otherwise… **the duration of the
+> previous sample is extended by the duration of this first sample** and the
+> elapsed_duration is ignored.
+
+That is the exact flag pair §3.2 recommends, mandated by MPEG for exactly this case,
+with the skip-and-extend behaviour spelled out rather than inferred from §8.6.4. It is
+the strongest available support for §3.2 and should be cited when that step is proposed.
+It also bounds where it can be used, in three ways.
+
+**It presupposes §3.2.** The box asserts the sample "is a copy of the previously
+received sample". A *clipped* restatement is not a copy — its `begin` and `end` carry
+different numbers — so under today's packager habit the flags cannot honestly be set at
+all. Unclipped restatement is the precondition for `rsot`, not an alternative to it.
+
+**It is mutually exclusive with §2.** A `ttmn` is not a copy of the full document
+preceding it, and `sample_has_redundancy=1` — "there is redundant coding in this sample"
+— would be a false statement about an 8-byte marker. A stream uses one mechanism or the
+other, never both.
+
+**Only `elapsed_duration` survives the paint model.** It describes the past — how long
+the copied sample has already been shown — and is always knowable. `original_duration`
+describes what the fragment's last sample was *meant* to last, which under §0.1 is
+precisely what a live paint-model packager does not know when it writes that sample. A
+simulator that knows the future can fill it in; a real encoder cannot.
+
+| | sent per unchanged fragment | continuation signalled by | requires |
+|---|---|---|---|
+| today, clipped | full document, **different bytes** | nothing — each sample stands alone | — |
+| today, unclipped (§3.2) | full document, **byte-identical** | `sample_has_redundancy=1`, and `rsot_elapsed_duration` where available | 14496-12:2026 for `rsot` |
+| this design (§2) | **8-byte `ttmn`** | the box itself | new sample entries, new 4CCs |
+
+**And it does not save a single byte.** MPEG standardised a mechanism aimed squarely at
+duplicated text samples at segment boundaries, and the duplicate document is still
+transmitted in full; what `rsot` buys is correct timing at the receiver and a defensible
+basis for skipping the parse. That is not an argument against this design but the
+strongest argument for it, because it shows the cost cannot be removed from 14496-12.
+The container layer can say *"this repeat continues the previous sample"*; only the
+timed-text layer can avoid sending the repeat at all.
+
+`rsot` is implemented in mp4ff as `RsotBox` (https://github.com/Eyevinn/mp4ff/pull/589).
+
 ## 4. The §5.9(4) amendment is a port, not an invention
 
 Compare. 14496-30 §5.9(4):
@@ -572,6 +636,11 @@ rule.
 DVB also already acknowledges the open-ended interval directly (§5.2.4.3): *"For live
 subtitling the endtime of an ISD may be **provisional and change when a new segment is
 created**."*
+
+This amendment is not made redundant by `rsot` (§3.6). That box lets a receiver rejoin a
+sample to the copy preceding it; it says nothing about a document outliving its sample
+when no copy follows, and nothing about MPA. It addresses the restatement, not the
+reason for restating.
 
 ### 4.1 Cue identity across boundaries
 
@@ -966,7 +1035,7 @@ Only the third exists today, and only for `wvtt`.
 
 | Spec | Clause | Current | Needed |
 |---|---|---|---|
-| 14496-12 | — | — | **nothing** |
+| 14496-12 | §8.8.18 (2026) | `rsot` documents a repeated first sample of a fragment | **nothing** — `rsot` is an alternative to §2, not a companion (§3.6) |
 | 23000-19 (CMAF) | — | — | **nothing** (timing arithmetic untouched) |
 | HLS bis | — | — | **nothing** (cadence preserved) |
 | 14496-30 | §5.9(4) | presentation clipped to CT + sample duration | **port EN 303 560 §5.2.3.3**: active until the next document or MPA |

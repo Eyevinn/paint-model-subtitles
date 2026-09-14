@@ -170,7 +170,7 @@ unchanged. `wvtt` already has this: its header lives in the sample entry.
 
 | Where | Change |
 |---|---|
-| ISO/IEC 14496-12, CMAF, HLS | nothing |
+| ISO/IEC 14496-12, CMAF, HLS | nothing. 14496-12:2026 §8.8.18 adds `rsot`, which documents a repeated sample rather than removing it — an alternative to this design, not a companion (notes §3.6) |
 | 14496-30 §5.9(4) | a document is active until the next document or MPA |
 | 14496-30 §5.6, §6.6 | new sample entries: documents raw as today, plus `ttmn` and `ttmb` boxes for `stpp` and `vttn` for `wvtt` |
 | 14496-30 §5.6 | non-sync signalling for `ttmn`, `ttmb` |
