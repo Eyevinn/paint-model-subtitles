@@ -35,7 +35,7 @@ native form: a frame-level subtitle update costs ~10 B and a track at 25 fps ~2 
 
 Low-latency CMAF delivers video in 20–40 ms chunks inside 2 s segments. ISO/IEC 14496-30
 requires every `stpp` sample to be a complete TTML document, so chunking subtitles the
-same way costs ~2.5 kB and one XML parse per chunk: ~330 kbps and 25 parses per second
+same way costs ~1.3 kB and one XML parse per chunk: ~280 kbps and 25 parses per second
 for content that changes about once a second. Not chunking them, the DASH-IF advice,
 leaves subtitles up to a segment behind video, and in players that gate on the slowest
 track it holds video and audio back too. Today there is nothing in between: a whole
@@ -53,7 +53,7 @@ practice to restate an unchanged cue in every chunk. That restatement is the cos
 
 | Sample | Sent when | Payload | Meaning |
 |---|---|---|---|
-| **I-sample** | first in every segment | complete document | current state, for tune-in |
+| **I-sample** | first in every segment | complete document, `<head>` always present | current state, for tune-in |
 | **P-sample** | a cue appears or changes | complete document, or body only (§5) | new state supersedes the old |
 | **Clear** | a cue is erased | a document giving the cue its `end`, or an empty document / `vtte` | nothing on screen |
 | **No-change** | every other part or chunk | 8-byte box | the active document continues |
@@ -81,7 +81,7 @@ unknown end and is cleared at 13.10.
 
 | Part at | Content |
 |---|---|
-| 10.00 | I-sample: empty document |
+| 10.00 | I-sample: `<head>` + empty `<body>` |
 | 10.25 | P-sample: `<p begin="10.3s">…</p>`, no `end` — the cue appears 50 ms into the part, placed by its own `begin` |
 | 10.50 – 11.75 | six no-change samples, 8 B each — the cue stays up |
 | 12.00 | I-sample: the same document, byte for byte; may be marked redundant |
@@ -159,9 +159,11 @@ a third symbol, and an 8-byte box header is one that no XML document can begin w
 
 ## 5. Head/body split, `stpp` only
 
-An IMSC `<head>` is 1–2 kB; the changing `<body>` is tens of bytes. Within a segment,
+An IMSC `<head>` is 0.9–2 kB; the changing `<body>` a few hundred bytes. Within a segment,
 P-samples may carry the body only, in a `ttmb`, and the receiver splices in the `<head>`
-of the segment's I-sample. Dependencies never cross a segment, so random access is
+of the segment's I-sample. Every segment's I-sample therefore carries the `<head>` even
+when nothing is on screen — head plus an empty `<body>` — so a body-only P-sample always
+has a head to splice. Dependencies never cross a segment, so random access is
 unchanged. `wvtt` already has this: its header lives in the sample entry.
 
 ## 6. What changes
@@ -177,18 +179,25 @@ unchanged. `wvtt` already has this: its header lives in the sample entry.
 
 ## 7. What it costs and saves
 
-2 s segments, a 2.5 kB IMSC document, a state change every ~1.5 s, 250 ms parts.
+2 s segments, a 1.3 kB IMSC document measured on a real teletext-derived EBU-TT-D track,
+a state change every ~1.5 s, 250 ms parts. Full derivation and inputs in the notes, §9.
 
 | Scheme | Update delay | Bitrate | XML parses/s |
 |---|---|---|---|
-| `stpp` chunked at 40 ms | 40 ms | ~330 kbps | 25 |
-| `stpp` in 1 s segments (DASH-IF advice) | ≥ 1 s | ~21 kbps | ~1 |
-| This design, `stpp`, full documents | 250 ms | ~27 kbps | ~0.65 |
-| This design, `stpp`, head/body split | 250 ms | ~5 kbps | ~0.65 |
-| This design, `wvtt` | 250 ms | ~4.4 kbps | — |
+| `stpp` chunked at 40 ms | 40 ms | ~280 kbps | 25 |
+| `stpp` in 1 s segments (DASH-IF advice) | ≥ 1 s | ~11 kbps | ~1 |
+| This design, `stpp`, full documents | 250 ms | ~16 kbps | ~0.65 |
+| This design, `stpp`, head/body split | 250 ms | ~11 kbps | ~0.65 |
+| This design, `wvtt` | 250 ms | ~4.7 kbps | — |
 
-The container costs ~110 B per part, so ~3.8 kbps is the floor at this cadence over
-HTTP. The two HTTP transports are bounded differently: LL-HLS by requests — a playlist
+The container costs ~120 B per part, so ~3.8 kbps is the floor at this cadence over
+HTTP, and a full I-sample per 2 s segment adds ~5.1 kbps for `stpp` whatever else is
+done — which is why the head/body split gains little at this update rate and much more
+as updates get faster (§9). An idle track still pays a head every segment: ~7.9 kbps
+with nothing on screen, against ~4.1 kbps for `wvtt`, whose header sits in the sample
+entry.
+
+The two HTTP transports are bounded differently: LL-HLS by requests — a playlist
 reload and a part fetch per part, ~8 per second at 250 ms — and LL-DASH by bytes only,
 since the chunks of a segment stream in one response. Parses per second, not bytes, are
 the binding cost on a TV system on chip (SoC), and no-change signalling makes that rate

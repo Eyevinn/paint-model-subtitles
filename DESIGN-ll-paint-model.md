@@ -29,7 +29,7 @@ B, so the subtitle cadence can match the video frame rate (§11).
 
 In low-latency (LL) CMAF, video is chunked at frame granularity (20–40 ms) inside a 2 s
 segment. Subtitles today force a choice: chunk them too (a complete TTML document per
-chunk — ~300–500 kbps and 25 XML parses/second), or don't chunk them (the DASH-IF LL
+chunk — ~280 kbps and 25 XML parses/second, §9), or don't chunk them (the DASH-IF LL
 recommendation), in which case subtitles lag video by up to a segment. There is nothing
 in between today. The design makes the cadence a continuum: the subtitle track can
 follow the video down to individual frame fragments at 8 bytes per unchanged fragment,
@@ -349,12 +349,12 @@ every approach in `RESEARCH.md` reduces to compressing a retransmission.
 
 | Time | Segment | Part | Sample in the part | Payload |
 |---|---|---|---|---|
-| 10.00 | N | 1 | I-sample: empty document — nothing on screen | ~60 B |
-| 10.25 | N | 2 | P-sample: `<p begin="10.3s">…</p>`, **no `end`** — the cue appears 50 ms into the part, placed by its own `begin` | ~2.5 kB |
+| 10.00 | N | 1 | I-sample: `<head>` + empty `<body>` — nothing on screen | ~1.0 kB |
+| 10.25 | N | 2 | P-sample: `<p begin="10.3s">…</p>`, **no `end`** — the cue appears 50 ms into the part, placed by its own `begin` | ~1.3 kB |
 | 10.50 – 11.75 | N | 3–8 | one `ttmn` each — **the cue is kept open by no-change samples** | 8 B each |
-| 12.00 | N+1 | 1 | I-sample: **the same document, byte for byte** — restated for tune-in, may be marked redundant | ~2.5 kB, skippable |
+| 12.00 | N+1 | 1 | I-sample: **the same document, byte for byte** — restated for tune-in, may be marked redundant | ~1.3 kB, skippable |
 | 12.25 – 12.75 | N+1 | 2–4 | one `ttmn` each | 8 B each |
-| 13.00 | N+1 | 5 | P-sample: `<p begin="10.3s" end="13.1s">…</p>` — **the end, now known, is written**; after 13.10 the document shows nothing | ~2.5 kB |
+| 13.00 | N+1 | 5 | P-sample: `<p begin="10.3s" end="13.1s">…</p>` — **the end, now known, is written**; after 13.10 the document shows nothing | ~1.3 kB |
 | 13.25 – 13.75 | N+1 | 6–8 | one `ttmn` each | 8 B each |
 
 What to notice:
@@ -380,11 +380,12 @@ What to notice:
   inside segment N+1. Because the packager did not clip it, the document is identical to
   the one sent at 10.25, so a receiver already holding it skips the parse (§9.1). A
   receiver tuning in at 12.00 parses it and shows the cue, as 14496-30 Figure 1 describes.
-  The I-sample at 14.00 is an empty document: the cue is entirely outside that sample, and
-  EBU Tech 3381 §6 says such content is omitted.
-- **With Layer 2** (§6) the 10.25 and 13.00 samples become `ttmb` bodies of ~150 B, since
-  the `<head>` is already in each segment's I-sample. The 12.00 I-sample must stay a full
-  document.
+  The I-sample at 14.00 is the head with an empty `<body>`: the cue is entirely outside
+  that sample, and EBU Tech 3381 §6 says such content is omitted.
+- **With Layer 2** (§6) the 10.25 and 13.00 samples become `ttmb` bodies of ~370 B
+  (§9), since the `<head>` is already in each segment's I-sample. The 12.00 I-sample
+  must stay a full document, and so must the idle one at 10.00 — head with an empty
+  `<body>`, or the P-samples in that segment would have no head to splice.
 - **If the packager stops** after 12.75, no further samples arrive and MPA (§7) clears the
   screen at 12.75 + 5 s. During normal delivery the no-change samples are what keep MPA
   from firing.
@@ -721,8 +722,8 @@ Cost per second at update rate `U`, using §9's document sizes:
 
 | | `U` = 1/s | `U` = 4/s |
 |---|---|---|
-| Full IMSC document (~2.5 kB) | ~20 kbps | **~80 kbps** |
-| Layer 2 body-only (~150 B) | ~1.2 kbps | ~4.8 kbps |
+| Full IMSC document (~1.3 kB, §9) | ~10 kbps | **~41 kbps** |
+| Layer 2 body-only (~370 B, §9) | ~3 kbps | ~12 kbps |
 
 Full-document restatement is comfortable at one update per second and untenable at four.
 So the head/body split (§6) is not merely an optimisation for the idle case — **it is what
@@ -739,12 +740,20 @@ paint-on.
 
 ## 6. Layer 2 — content prediction for `stpp`
 
-Only worth doing for TTML, where the `<head>` is 1–2 kB and the changing `<body>` is
-tens of bytes.
+Only worth doing for TTML, where the `<head>` is 0.9–2 kB and the changing `<body>` a
+few hundred bytes — 910 B and 363 B in the measured sample of §9.
 
 - **I-sample**: complete IMSC document — `<head>` + full current `<body>`.
 - **P-sample**: body only, carried in a `ttmb` box (§2.1); the receiver splices in the
   `<head>` from **the I-sample of the same segment**.
+
+**Every segment's I-sample carries the `<head>`, including when nothing is on screen** —
+then it is the head with an empty `<body>`: 972 B in §9's measurement, where a bare empty
+document would have been ~60 B. Without the rule, a body-only P-sample arriving in a
+segment that opened idle would have no head to splice. Paying it unconditionally also
+keeps the sample kind independent of history: the first sample of a segment is always a
+full document and every later sample in it may be a body, whatever was on screen when the
+segment opened. The cost is the design's idle floor (§9).
 
 Dependency scope is deliberately **one segment — a closed GOP**, so segment-level
 random access is untouched. This breaks §5.6 ("Every sample is therefore a sync sample
@@ -753,7 +762,8 @@ in this format"); the fragment must signal dependency as video does — `tfhd`
 *requires* these flags, so it fits the existing shape.
 
 For `wvtt`, Layer 2 is **already done** — the header lives in `vttC` in the sample
-entry, so a `wvtt` sample is already just the cue payload (~60 B).
+entry, so a `wvtt` sample is already just the cue payload (~70 B). That is also why the
+I-sample term of §9 hurts `stpp` and not `wvtt`.
 
 ## 7. Failsafe: maximum period of activation
 
@@ -788,31 +798,78 @@ the model, `stpp` is the patient.
 
 ## 9. Byte budget
 
-2 s segments, 2.5 kB IMSC document, state changing ~every 1.5 s, `C` = 250 ms — the
-LL-HLS video part cadence (§5).
+**Measured inputs, not assumed ones.** The document sizes are measured on a real
+broadcast `stpp` track: `stpp_prog.mp4` in mp4ff's `mp4ff-subslister` test data,
+EBU-TT-D converted from a French teletext service — its two regions are named `ttx_9`
+and `ttx_11` after the teletext rows they came from, so it is exactly §0.2's
+paint-model ingest case.
+
+| Part of the document | Bytes |
+|---|---|
+| XML prolog + `<tt>` + `<head>` — two styles, two regions | 910 |
+| `<body>` / `<div>` wrapper | 62 |
+| one `<p>` cue | ~150 |
+| **one on-screen state — two rows, as teletext sends them** | **1273** |
+| empty screen, head and wrapper retained | 972 |
+| body only in a `ttmb` (§6) — 8 B box + wrapper + two cues | 371 |
+
+The file's `btrt` reports `bufferSizeDB` 1592, exactly the size of its single sample,
+which covers two successive states because that segment is 6 s long; a low-latency
+sample carries one. This is a lean head: two styles and two regions. A document with
+regions for all eight teletext rows, or heavier styling, scales the `stpp` rows below
+roughly with its head, so read them as the low end of `RESEARCH.md` §1's 1–2 kB spread.
+
+**The model.** 2 s segments; `C` = 250 ms, the LL-HLS video part cadence (§5), so four
+parts per second and one I-sample every eight parts; `U` = 0.65 content changes per
+second, a state change every ~1.5 s (§5.1); ~120 B of container per part (§5); 8 B per
+no-change box; a cue on screen throughout. Each row is container + I-samples at 0.5/s +
+P-samples at `U` + no-change boxes for the remaining 2.85 parts per second.
 
 | Scheme | Max update delay | Bitrate |
 |---|---|---|
-| `stpp` chunked at 40 ms (naive LL) | 40 ms | ~330 kbps |
-| `stpp` unchunked 1 s segments (DASH-IF advice) | ≥ 1 s | ~21 kbps |
-| No-change samples, `stpp`, Layer 1 only | 250 ms | ~27 kbps |
-| **No-change samples, `stpp`, Layer 1+2** | 250 ms | **~5.1 kbps** |
-| `wvtt`, restated `vttc` per part, as today (no spec change) | 250 ms | ~5.8 kbps (cue on screen) |
-| **No-change samples, `wvtt`** | 250 ms | **~4.4 kbps** |
-| + unclipped documents (§3) + shared dictionary (`RESEARCH.md` E1) | 250 ms | **~3.8 kbps** (floor-bound) |
-| MoQ + LOCMAF, `wvtt`, frame-rate cadence (§11.2) | 40 ms | **~2 kbps** |
+| `stpp` chunked at 40 ms (naive LL) | 40 ms | ~280 kbps |
+| `stpp` unchunked 1 s segments (DASH-IF advice) | ≥ 1 s | ~11 kbps |
+| No-change samples, `stpp`, Layer 1 only | 250 ms | ~16 kbps |
+| **No-change samples, `stpp`, Layer 1+2** | 250 ms | **~11 kbps** |
+| `wvtt`, restated `vttc` per part, as today (no spec change) | 250 ms | ~6 kbps (cue on screen) |
+| **No-change samples, `wvtt`** | 250 ms | **~4.7 kbps** |
+| + unclipped documents (§3) + shared dictionary (`RESEARCH.md` E1) | 250 ms | **~4.2 kbps** (floor-bound) |
+| MoQ + LOCMAF, `wvtt`, frame-rate cadence (§11.2) | 40 ms | **~2.6 kbps** |
 
 Effort ordering over HTTP at video-part cadence:
 
-- no-change box alone: 330 → 27 kbps (**12×**)
-- plus Layer 2 head/body split: 27 → 5.1 kbps (**5×**)
-- plus unclipped documents and dictionary: 5.1 → 3.8 kbps (**1.3×**, container-floor
-  bound)
+- no-change box alone: 280 → 16 kbps (**18×**)
+- plus Layer 2 head/body split: 16 → 11 kbps (**1.4×** at this `U`, and rising with
+  `U` — §5.2)
+- plus unclipped documents and dictionary: `wvtt` 4.7 → 4.2 kbps (**1.1×**,
+  container-floor bound)
+
+**The I-sample is the dominant term for `stpp`, which a coarser document estimate
+obscures.** A full document once per segment is 1273 B / 2 s = **5.1 kbps** against a
+container floor of 3.8 kbps, so no `stpp` scheme that keeps per-segment tune-in goes
+below ~8.9 kbps at 2 s segments, and the I-sample is **46 % of the Layer 1+2 row**.
+Layer 2 shrinks the 0.65 P-samples per second and leaves the 0.5 I-samples per second
+alone, so at teletext update rates it buys 1.4×, not the order of magnitude that
+comparing head size against body size suggests. Its value lives in `U`: at `U` = 4/s
+every part carries a P-sample and the same two rows become ~45 and ~19 kbps — a 2.3×
+gain, against the 3.4× that §5.2's payload-only figures (~41 and ~12 kbps) suggest,
+because those omit the container and the I-sample. The levers on the I-sample itself
+are segment length and, more radically, moving the `<head>` into the sample entry the
+way `wvtt` does (§8).
+
+**The idle floor follows from the same term.** With nothing on screen the I-sample is
+still the head plus an empty `<body>`, 972 B (§6), so an idle `stpp` track costs
+**~7.9 kbps** at 250 ms parts — 3.8 kbps of container, 3.9 kbps of heads, 28 B/s of
+markers — against **~4.1 kbps** for an idle `wvtt` track, whose header sits in the sample
+entry. A subtitle track that says nothing for an hour still pays for a head every 2 s.
+That is the price of per-segment tune-in without a sample-entry head, and the sharpest
+byte argument for §8's reading of `wvtt` as the cleaner model — without disturbing §8's
+conclusion that `stpp` is the patient.
 
 The two `wvtt` rows are ~1.4 kbps apart. Restating a ~70 B `vttc` (`vttc` + `vsid` +
-`payl`) in every part is already cheap against the ~110 B container, so for `wvtt` the
+`payl`) in every part is already cheap against the ~120 B container, so for `wvtt` the
 no-change box is a refinement — about a quarter of the bytes at 250 ms, a third at 40 ms
-— not the enabler it is for `stpp`, where the same restatement costs a 2.5 kB document.
+— not the enabler it is for `stpp`, where the same restatement costs a whole document.
 
 Payload optimisations hit diminishing returns against the ~120 B container floor — which
 is exactly what LOCMAF removes over MoQ (§11.1). At coarser cadences, ordinary 2 s

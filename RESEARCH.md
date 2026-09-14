@@ -12,11 +12,13 @@ layout, metadata) plus a `<body>` containing the timed `<p>` elements active in
 the sample's interval.
 
 For typical broadcast subtitles, the static layout/styling portion is roughly
-1–2 kB while the dynamic body content is often tens of bytes (or empty). At
-normal segment durations (1–5 s) this is tolerable. For low-latency CMAF chunks
-of 200–500 ms, the bitrate is dominated by repeated boilerplate:
+1–2 kB while the dynamic body content is a few hundred bytes (or empty) — 910 B
+and 363 B measured on the teletext-derived EBU-TT-D sample of
+`DESIGN-ll-paint-model.md` §9. At normal segment durations (1–5 s) this is
+tolerable. For low-latency CMAF chunks of 200–500 ms, the bitrate is dominated
+by repeated boilerplate:
 
-- A 2 s segment split into 10 chunks: ~10 kbps → ~100 kbps, with 10× the XML
+- A 2 s segment split into 10 chunks: ~6 kbps → ~56 kbps, with 10× the XML
   parsing cost on the receiver.
 
 The DASH-IF Low-Latency Live Community Review (CR-Low-Latency-Live-r8)
