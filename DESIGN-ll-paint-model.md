@@ -1152,8 +1152,17 @@ LOCMAF as specified. Text profiles are unaffected, which is what this design tar
    players may assume alignment.
 4. **Do deployed renderers handle a begin earlier than the sample** as 14496-30 Figure 1
    describes — presenting as if seeked into the document — or do some treat the sample
-   start as document time zero, Smooth Streaming style? The former is conformant; the
-   latter would show a cue late or not at all.
+   start as document time zero, Smooth Streaming style? *Partly answered.* Neither
+   dash.js nor shaka takes the sample start as time zero, so the Smooth Streaming
+   reading is not a live risk in either. Shaka does clip, but to the **segment** rather
+   than the sample: `Mp4TtmlParser` hands one segment-level time context to every sample
+   and `TtmlTextParser` applies `max(start, segmentStart)` / `min(end, segmentEnd)`.
+   With one sample per segment the two coincide; with several they do not, and a cue
+   with no `end` is held to the end of the segment instead of its own chunk, leaving a
+   stale caption on top of the next one. Measured on a chunked stream: three cues per 2
+   s segment, two of them a full 2 s, two captions on screen at once. So §3.2 is not
+   free to adopt today — it needs a fix in shaka first. Other renderers remain to be
+   checked.
 5. **What has the ISO BMFF systems group produced** on CMAF Annex F's *"no generally
    supported semantic to represent 'missing' media in a track"* since 2023?
 6. **Does a subtitle rendition at video's `PART-TARGET` create playlist-reload
@@ -1163,9 +1172,19 @@ LOCMAF as specified. Text profiles are unaffected, which is what this design tar
    samples once a segment completes, so the stored artifact is conformant today and only
    the live wire form is novel. Unclipped documents need no rewriting; only the sample
    table changes.
-8. **Do players honour §5.9(3) redundancy, or detect identical documents?** The
-   no-spec-change step of §3.2 depends on one or the other; dash.js and shaka may re-parse
-   regardless.
+8. ~~**Do players honour §5.9(3) redundancy, or detect identical documents?**~~
+   *Answered, and the answer costs §3.2 its parse-rate claim.* **Neither open-source
+   player reads the sample flags at all**, so the redundancy marking reaches no
+   decision: dash.js's `getSamplesInfo` keeps only `cts`, `duration`, `offset`, `size`
+   and `subSizes`, and shaka's TRUN parser carries the line `// Skip "sample_flags" if
+   present.` Both then parse **every** sample in full before anything is compared. What
+   de-duplication exists happens afterwards, on cues: dash.js `extendSegmentedCues`
+   (default on) merges an adjacent cue of identical content by extending its end time,
+   comparing thirteen properties including the whole ISD; shaka's `Cue.equal` drops only
+   exact duplicates, matching start and end within 1 ms, and never merges adjacent ones.
+   So the §9.1 parse saving is not available today from the flag in either player — it
+   needs receiver changes, which is the one thing §2's box cannot be ignored into.
+   Whether any TV-SoC receiver acts on the flag is still open.
 9. **Can LOCMAF's chunk encoding be carried inside an LL-DASH segment response?** It
    depends on MoQ only for framing (§11.2). With per-chunk framing defined, LL-DASH would
    get the ~10 B chunk floor too, and frame-level subtitle updates with it.
