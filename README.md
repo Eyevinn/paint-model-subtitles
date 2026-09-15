@@ -82,8 +82,11 @@ not registered.
 The half that needs no new signalling — unclipped `begin`, an `end` written only in the
 fragment where the cue ends, and the redundancy marking — is implemented and serving
 live streams in [livesim2](https://github.com/Dash-Industry-Forum/livesim2/pull/337),
-which chunks its generated `stpp` and `wvtt` tracks at the video chunk cadence. Nothing
-in §2 (the no-change box) or §4 (the activation rule) is implemented anywhere.
+which chunks its generated `stpp` and `wvtt` tracks at the video chunk cadence. The §2
+boxes have library support — `stpc`, `wvtc`, `ttmn`, `ttmb` and `vttn` read, written and
+listed in an open mp4ff pull request,
+[#590](https://github.com/Eyevinn/mp4ff/pull/590) — but no packager emits them, no
+player acts on them, and §4 (the activation rule) is implemented nowhere.
 `PROTOTYPE.md` says what is measured and what is not.
 
 ## How to comment

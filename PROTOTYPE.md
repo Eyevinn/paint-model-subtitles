@@ -23,8 +23,16 @@ exists is marked below.
 
 1. **ISOBMFF library.** Add the `stpc` and `wvtc` sample entries and the `ttmn`, `ttmb`
    and `vttn` boxes to mp4ff, write multi-sample fragments (I-sample plus no-change
-   samples) and confirm they round-trip with correct sample times. *Not done.* mp4ff
-   does now carry `rsot` (§3.6), which is the other mechanism rather than a step towards
+   samples) and confirm they round-trip with correct sample times. **Done on a branch**,
+   in [mp4ff #590](https://github.com/Eyevinn/mp4ff/pull/590), open and unmerged:
+   `stpc` and `wvtc` reuse `StppBox` and `WvttBox` with a name field, as the visual
+   sample entries already do; `ttmn`, `vttn` and `ttmb` are whole-sample boxes; a sample
+   is one of them only if its first eight bytes are that box header with a size equal to
+   the sample size; and `mp4ff-subslister` renders them instead of dumping opaque bytes.
+   A test writes a four-sample fragment — document, `ttmn`, `ttmb`, `ttmn`, 200 ms each,
+   the first a sync sample and the rest depending on it — and reads the sample times
+   back. The 4CCs are the design's placeholders and are not registered with MP4RA. mp4ff
+   also carries `rsot` (§3.6), which is the other mechanism rather than a step towards
    this one: https://github.com/Eyevinn/mp4ff/pull/589
 2. **Generator.** A paint-model subtitle track from a synthetic source whose text changes
    every N seconds: an I-sample per segment, a document per change — for `stpp` one
