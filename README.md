@@ -15,7 +15,9 @@ before any standards contribution.
 
 The changes are small, and they land in one standard. ISO/IEC 14496-30 gains
 one rule — a document stays active until the next one supersedes it — and new
-sample entries to carry the 8-byte box. ISOBMFF, CMAF and HLS need nothing. The
+sample entries to carry the 8-byte box. ISOBMFF, CMAF and HLS need nothing: the
+new track is offered beside an ordinary `stpp` track, which CMAF requires anyway,
+so legacy players keep what they have. The
 half that removes the latency needs no spec change at all: it is permitted
 today, and already serving live streams in
 [livesim2](https://github.com/Dash-Industry-Forum/livesim2/pull/337).
@@ -85,9 +87,33 @@ live streams in [livesim2](https://github.com/Dash-Industry-Forum/livesim2/pull/
 which chunks its generated `stpp` and `wvtt` tracks at the video chunk cadence. The §2
 boxes have library support — `stpc`, `wvtc`, `ttmn`, `ttmb` and `vttn` read, written and
 listed in an open mp4ff pull request,
-[#590](https://github.com/Eyevinn/mp4ff/pull/590) — but no packager emits them, no
-player acts on them, and §4 (the activation rule) is implemented nowhere.
-`PROTOTYPE.md` says what is measured and what is not.
+[#590](https://github.com/Eyevinn/mp4ff/pull/590). livesim2 generates `stpc` and
+`wvtc` tracks on its
+[`feat/paint-model-subtitles`](https://github.com/Dash-Industry-Forum/livesim2/tree/feat/paint-model-subtitles)
+branch, and modified dash.js and
+[Shaka Player](https://github.com/Eyevinn/shaka-player/tree/feat/paint-model-subtitles)
+play them (see [Demo](#demo)). The maximum period of activation (§7) is not
+implemented yet. `PROTOTYPE.md` says what is measured and what is not.
+
+## Demo
+
+Two pages play the same live livesim2 stream in the two players. Each shows the four
+subtitle tracks side by side: `stpp`, `stpc`, `wvtt` and `wvtc`. For each track they
+count the bytes of every segment, as CMAF and as LOCMAF, and the parsing work in the
+player.
+
+- [dash.js](https://192-46-234-23.ip.linodeusercontent.com/vod/dashjs-paint/samples/paint-model-subtitles/)
+- [Shaka Player](https://192-46-234-23.ip.linodeusercontent.com/vod/shaka-paint/demo/paint-model-subtitles/)
+
+Both open on `stpc` and on this stream: 2 s segments, 100 ms chunks, and cues of
+3.456 s, so that cue changes fall inside chunks.
+
+```
+https://192-46-234-23.ip.linodeusercontent.com/livesim2/chunkdur_0.1/utc_head/timesubsdur_3456/timesubssegnr_0/timesubsstpp_en/timesubsstpc_en;body=1/timesubswvtt_en/timesubswvtc_en/testpic_2s/Manifest.mpd
+```
+
+Any other livesim2 URL can be pasted into the page's MPD field. The chunk duration
+is its `chunkdur_` part, and `track=` in the page URL selects the starting track.
 
 ## How to comment
 
