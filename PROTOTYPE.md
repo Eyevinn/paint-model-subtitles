@@ -5,7 +5,7 @@ How to try the paint-model design and measure it. The design itself is in
 [`DESIGN-ll-paint-model.md`](DESIGN-ll-paint-model.md). Section numbers below refer to
 the full notes.
 
-**Status.** Step 3 is done and steps 1 and 4 are partly done; the rest is plan. What
+**Status.** Step 3 is done and steps 1, 4 and 7 are partly done; the rest is plan. What
 exists is marked below.
 
 ## 1. What to measure
@@ -66,7 +66,9 @@ exists is marked below.
    the real change rate, and the restatement rate today's converters produce from the
    same capture (§12 question 1; §0.3 for Shaka Packager).
 7. **MoQ.** Run the same generator through moqlivemock and play it in warp-player; measure
-   LOCMAF object sizes at frame-rate cadence against §11.2.
+   LOCMAF object sizes at frame-rate cadence against §11.2. *The publishing side is done*:
+   moqlivemock serves all four tracks as CMAF and as LOCMAF, one object per video object
+   (§3). Playback in warp-player and the §11.2 measurement are not recorded here yet.
 8. **Separately**, evaluate the MoQ sparse variant against §11.4's caveats. It is a
    different design, not a later stage of this one.
 
@@ -83,10 +85,12 @@ generator, with the text track honouring `chunkdur` and chunked transfer. The ex
 parameters side by side. It is DASH only.
 
 **MoQ: moqlivemock and warp-player** (Eyevinn). moqlivemock's subtitle generator is the
-same code lineage as livesim2's and produces time-aligned `stpp` and `wvtt` groups, one
-object per group today. Its issue #140, from a Shaka Player maintainer, asks for LOCMAF
-subtitles; the paint model is what makes them worthwhile, since no-change objects at
-video cadence give LOCMAF's delta heads something to compress. warp-player has an MSE
+same code lineage as livesim2's. It publishes `stpp`, `stpc`, `wvtt` and `wvtc`, each as
+CMAF and as LOCMAF, eight tracks in all, in the CMSF namespaces but not the MSF one. Every
+subtitle track has the video's object rate: a group holds one chunk per video object, 25 a
+second, sent when the interval it covers ends. Its issue #140, from a Shaka Player
+maintainer, asked for LOCMAF subtitles; the paint model is what makes them worthwhile,
+since no-change objects at video cadence give LOCMAF's delta heads something to compress. warp-player has an MSE
 path for CMAF and LOCMAF and an overlay seam with CTA-608 as its first renderer; its
 issue #167 asks to show the seam fits WebVTT and IMSC, which is where a paint-model cue
 source would plug in. Both run publicly at https://moqlivemock.demo.osaas.io/ — the live

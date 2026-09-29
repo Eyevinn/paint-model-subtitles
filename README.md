@@ -92,10 +92,15 @@ listed in an open mp4ff pull request,
 [`feat/paint-model-subtitles`](https://github.com/Dash-Industry-Forum/livesim2/tree/feat/paint-model-subtitles)
 branch, and modified dash.js and
 [Shaka Player](https://github.com/Eyevinn/shaka-player/tree/feat/paint-model-subtitles)
-play them (see [Demo](#demo)). The maximum period of activation (§7) is not
+play them. moqlivemock publishes all four over MoQ, as CMAF and as LOCMAF (see
+[Demo](#demo)). The maximum period of activation (§7) is not
 implemented yet. `PROTOTYPE.md` says what is measured and what is not.
 
 ## Demo
+
+The tracks are served live over LL-DASH by livesim2, and over MoQ by moqlivemock.
+
+### LL-DASH
 
 Two pages play the same live livesim2 stream in the two players. Each shows the four
 subtitle tracks side by side: `stpp`, `stpc`, `wvtt` and `wvtc`. For each track they
@@ -114,6 +119,17 @@ https://192-46-234-23.ip.linodeusercontent.com/livesim2/chunkdur_0.1/utc_head/ti
 
 Any other livesim2 URL can be pasted into the page's MPD field. The chunk duration
 is its `chunkdur_` part, and `track=` in the page URL selects the starting track.
+
+### MoQ
+
+[moqlivemock](https://moqlivemock.demo.osaas.io/) publishes all eight subtitle
+variants live: `stpp`, `stpc`, `wvtt` and `wvtc`, each as CMAF and as LOCMAF
+(`subs_stpc_en` and `subs_stpc_en_locmaf`, and so on). They are in the CMSF
+namespaces, `mlm/cmsf/clear` and the two encrypted ones, and not in the MSF namespace
+`mlm/msf/clear`, which carries only LOC video and audio. A subtitle group holds one
+chunk per video object, 25 a second, and each chunk is sent when the interval it
+covers ends. The browser player is
+[warp-player](https://moqlivemock.demo.osaas.io/warp-player/).
 
 ## How to comment
 
