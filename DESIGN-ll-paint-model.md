@@ -19,6 +19,8 @@ one. Companion to `RESEARCH.md`, which surveys *size* reduction (approaches A–
 4. **New no-change signalling for `stpp` and `wvtt`.** An empty 8-byte box (`ttmn`,
    `vttn`) as the sample, under a new sample entry (§2.1, §5).
 
+14496-30 clause numbers refer to ISO/IEC 14496-30:2018 as amended by Amd 1:2022.
+
 Two findings shape the rest. Bytes are not the binding cost on a TV system on chip
 (SoC); XML parses per second are, and no-change signalling makes the parse rate a
 function of content changes rather than chunk rate (§9.1). And over MoQ (Media over
@@ -76,7 +78,7 @@ Today's carriage demands one anyway, so the packager must fabricate it. Its opti
 
 Only the third survives, and in low-latency it is exactly what makes today's packaging
 expensive: **a cue that is not changing at all is restated once per chunk**, purely
-because §5.9(4) will not let a document outlive its sample. At 40 ms chunks that is 25
+because §5.9(3) will not let a document outlive its sample. At 40 ms chunks that is 25
 restatements per second of identical content. The bitrate problem in `RESEARCH.md` §1 is
 not caused by subtitles changing quickly — it is caused by an impedance mismatch between
 a paint-model source and an interval-model carriage.
@@ -357,7 +359,7 @@ fragment; later chunks within it need not start with one.
 Why not the alternatives:
 
 - **A zero-size sample** — 14496-30 §4.2 forbids it and 23001-18 avoids it (above).
-- **The §5.9(3) redundancy flag alone** — it marks a document *that is present* as
+- **The §5.6 redundancy flag alone** — it marks a document *that is present* as
   identical to the previous one. The bytes are still sent; the flag lets the receiver skip
   the parse, which is §3's win, not this one.
 - **An empty document** — that already means *clear the screen* (§2.2). The third state
@@ -407,7 +409,7 @@ What to notice:
   TTML processor computes for each interval in which no element begins or ends — keeps
   the cue. At the container level the document's *active period* runs past its own
   sample's 250 ms until the next document supersedes it (§4); without that change,
-  today's §5.9(4) would end the cue at 10.50.
+  today's §5.9(3) would end the cue at 10.50.
 - **One sample per part, as `stpp` today.** The changes at 10.30 and 13.10 are placed by
   the documents' own `begin` and `end`, not by the sample table, so no part needs
   splitting. `tfdt` at 12.00 equals the sum of durations and every part is exactly one
@@ -418,7 +420,8 @@ What to notice:
 - **The I-sample at 12.00 is a begin time outside the fragment** (§3): `begin="10.3s"`
   inside segment N+1. Because the packager did not clip it, the document is identical to
   the one sent at 10.25, so a receiver already holding it skips the parse (§9.1). A
-  receiver tuning in at 12.00 parses it and shows the cue, as 14496-30 Figure 1 describes.
+  receiver tuning in at 12.00 parses it and shows the cue, as 14496-30 §5.3 Tables 1 and 2
+  describe for a document whose `begin` precedes its sample.
   The I-sample at 14.00 is the head with an empty `<body>`: the cue is entirely outside
   that sample, and EBU Tech 3381 §6 says such content is omitted.
 - **With Layer 2** (§6) the 10.25 and 13.00 samples become `ttmb` bodies of ~370 B
@@ -437,13 +440,10 @@ document; `ttmn` — nothing, except reset the MPA timer.
 
 ### 3.1 The problem: clipped documents are position-dependent
 
-14496-30 §5.3:
-
-> The top-level internal timing values in the timed text samples based on TTML express
-> times on the **track presentation timeline** – that is, the track media time as
-> optionally modified by the edit list. For example, the begin and end attributes of
-> the `<body>` element, if used, are **relative to the start of the track, not relative
-> to the start of the sample**.
+14496-30 §5.3 puts the time coordinates of every document on the track composition
+timeline, and its NOTE 1 is explicit that this holds in segment files too: times are
+*"relative to time 0 on the track composition timeline and are not relative to the
+segment start"*.
 
 So every document's times are on an ever-growing track timeline. That alone is not the
 problem — a cue's `begin` is a constant however often the cue is restated. The problem is
@@ -453,8 +453,8 @@ segment. Shaka's `TextChunker` does exactly this (§0.3: *"a cropped copy that e
 segment boundary"*, with the start likewise cropped to `segment_start_`). The same
 subtitle shown at 00:10:00 and 00:12:00 then has **different bytes**, and:
 
-- §5.9(3)'s "if a sample contains the identical document to the prior sample, it may
-  be marked as redundant" almost never fires in live.
+- §5.6's "if a sample contains the identical document to the prior sample, it may be
+  marked as redundant" almost never fires in live.
 - Each segment's I-sample must be re-serialized, even when nothing changed.
 - Shared-dictionary and delta compression (`RESEARCH.md` E–H) fight the timestamps,
   which are the highest-entropy part of an otherwise static document.
@@ -464,11 +464,12 @@ subtitle shown at 00:10:00 and 00:12:00 then has **different bytes**, and:
 
 14496-30 §5.9(1) permits times outside the sample outright: the earliest computed begin
 *"can be non-coincident (earlier or later) with the composition time of the containing
-sample"*, and likewise the latest end with the sample end. §5.9(3) permits content that
+sample"*, and likewise the latest end with the sample end. §5.9(2) permits content that
 falls *"partially or wholly within the duration of a sample"* to be duplicated in adjacent
-samples, and if the document is identical it *"may be marked as redundant"*. Figure 1 of
-the same standard shows a receiver handling a document whose times start before the
-sample: it presents *"as if the decoder seeked"* into the document. Downstream:
+samples, and §5.6 lets an identical document be *"marked as redundant"*. Tables 1 and 2 of
+§5.3 work through exactly this case: samples 3 and 4 carry the same document, with a
+`begin` hours before either sample, and each is presented clipped to its own sample;
+sample 6 has no `end` at all. Downstream:
 
 - **CMAF** §11.3 defers to 14496-30 and adds no constraint on document times; §11.6 only
   requires padding samples, which §2 provides.
@@ -481,18 +482,19 @@ sample: it presents *"as if the decoder seeked"* into the document. Downstream:
   the sample — not unclipped times.
 
 So the rule is simply: **stop clipping — a cue keeps its true `begin`, and its `end` is
-omitted while unknown** (or kept, when the future is known, §0.1). Under today's §5.9(4)
+omitted while unknown** (or kept, when the future is known, §0.1). Under today's §5.9(3)
 the receiver confines presentation to each sample, so an open-ended `<p begin="…">`
 restated in every sample is already the paint model emulated by restatement; under §4's
 amendment the restatement is no longer needed. Either way every restatement is **byte-
-identical**, so §5.9(3)'s redundancy flag fires on each one and a receiver can skip the
+identical**, so §5.6's redundancy flag fires on each one and a receiver can skip the
 parse. That is the parse-rate win of §9.1, with **no spec change** and no new box. The
 bytes are still wasted; §2 and §6 fix that.
 
-The "redundant" marking is 14496-12's, not 14496-30's own: §5.9(3) names no field. It is
-the sample dependency flags of 14496-12 §8.6.4 — in `sdtp` for a plain file, in the
-`sample_flags` of `trun` or the `default_sample_flags` of `tfhd` for fragments — set to
-`sample_depends_on = 2` and `sample_has_redundancy = 1`. Every `stpp` sample already has
+The "redundant" marking is 14496-12's, and since Amd 1 §5.6 names it: the
+`sample_has_redundancy` flag, with processors free to extend the prior sample and discard
+the new one. It lives in the sample dependency flags of 14496-12 §8.6.4 — in `sdtp` for a
+plain file, in the `sample_flags` of `trun` or the `default_sample_flags` of `tfhd` for
+fragments — set to `sample_depends_on = 2` and `sample_has_redundancy = 1`. Every `stpp` sample already has
 the first, since §5.6 makes them all sync samples; the second is the only addition. For
 tracks that are not video, audio or hint, §8.6.4 then says such a sample *"can be
 discarded, and its duration added to the duration of the preceding one"* once a sync
@@ -519,7 +521,7 @@ Neither is needed once packagers stop clipping.
 Unclipped documents make a persisting cue's I-sample **byte-identical every segment**.
 Then:
 
-- §5.9(3) redundancy marking becomes genuinely usable — the receiver can skip XML
+- §5.6 redundancy marking becomes genuinely usable — the receiver can skip XML
   parsing entirely, addressing `RESEARCH.md` §1's "10× parsing cost on the receiver".
 - Compression stops fighting the timestamps: an exact dictionary hit rather than a
   near-miss.
@@ -607,9 +609,9 @@ timed-text layer can avoid sending the repeat at all.
 
 `rsot` is implemented in mp4ff as `RsotBox` (https://github.com/Eyevinn/mp4ff/pull/589).
 
-## 4. The §5.9(4) amendment is a port, not an invention
+## 4. The §5.9(3) amendment is a port, not an invention
 
-Compare. 14496-30 §5.9(4):
+Compare. 14496-30 §5.9(3):
 
 > **Only one sample and document** within a Timed Text Track **can be active at any
 > moment** in the presentation. The presentation of every document is constrained in
@@ -682,12 +684,13 @@ The untimed case (EN 303 560 §5.2.3.7) is simply the degenerate one with exactl
 **Backward compatibility falls out.** For content whose samples tile the timeline — all
 existing `stpp` and `wvtt` tracks — the next sample's composition time *is* the current
 sample's composition time (CT) plus its duration, so rule 3 gives exactly the interval
-§5.9(4) gives today. The new rule is behaviourally identical for every existing stream;
+§5.9(3) gives today. The new rule is behaviourally identical for every existing stream;
 it only differs where delivery actually stops, which today is undefined anyway.
 
 To keep that exact, MPA must be measured from the **last sample of any kind**, and the
 active interval bounded by `CT + max(sample_duration, MPA)` so that legitimately long
-samples (14496-30 Figure 1 has a 30-minute one) are not truncated by a 5 s failsafe.
+samples (every sample in 14496-30 §5.3 Table 1 is 30 minutes) are not truncated by a 5 s
+failsafe.
 
 ### 4.3 What a no-change marker means, precisely
 
@@ -897,7 +900,9 @@ only as an alternative considered, not as something the `wvtt` variant uses.
 Nor does `wvtt` need the no-change box to be paint-model. A cue that spans samples is
 restated as a `vttc` in each, and §6.6 makes a `source_ID` match *"diagnostic that the
 same cue is still active"* — so a ~70 B `vttc` per part, with the part's duration, is the
-paint model today, and no end time is ever known at cue start. For `wvtt` the no-change
+paint model today, and no end time is ever known at cue start. Amd 1 made this the rule
+rather than a habit: §6.3 requires a cue of indefinite duration to be duplicated in every
+subsequent sample, and `vttn` is what replaces those duplicates. For `wvtt` the no-change
 box and MPA are refinements (§9); they are the enabler only for `stpp`.
 
 Deployment reality runs the other way (`wvtt`-in-mp4 is rare; HLS ships sidecar `.vtt`,
@@ -1024,7 +1029,7 @@ The `~1.15` is 0.65 content changes plus one segment-boundary I-sample restateme
 2 s. Not clipping (§3.2) removes that residue: the restatement is byte-identical, so the
 receiver can recognise it and skip the work. This is the concrete form of §3.4's claim
 that its value at LL cadence is CPU rather than bytes, and it is what finally makes
-14496-30 §5.9(3)'s "may be marked as redundant" do something useful.
+14496-30 §5.6's "may be marked as redundant" do something useful.
 
 Approach G is the only existing proposal that attacks this axis, and it does so by
 abandoning XML samples entirely — a new sample format, incompatible with everything. The
@@ -1045,10 +1050,10 @@ Only the third exists today, and only for `wvtt`.
 | Spec | Clause | Current | Needed |
 |---|---|---|---|
 | 14496-12 | §8.8.18 (2026) | `rsot` documents a repeated first sample of a fragment | **nothing** — `rsot` is an alternative to §2, not a companion (§3.6) |
-| 23000-19 (CMAF) | — | — | **nothing** (timing arithmetic untouched) |
+| 23000-19 (CMAF) | §11.3.3, §A.1.2–A.1.4 | an `im1t` track has only IMSC samples, and CMFHD presentations with subtitles need one | **nothing**, with `stpc` offered beside an `stpp` track (timing arithmetic untouched); a media profile for `stpc` would let it stand alone |
 | HLS bis | — | — | **nothing** (cadence preserved) |
-| 14496-30 | §5.9(4) | presentation clipped to CT + sample duration | **port EN 303 560 §5.2.3.3**: active until the next document or MPA |
-| 14496-30 | §5.3, §5.9(1) | times on the track timeline; begin may precede the sample | **nothing** — packagers must stop clipping (§3.2) |
+| 14496-30 | §5.9(3), with §5.3 and §5.10 following | presentation clipped to CT + sample duration | **port EN 303 560 §5.2.3.3**: active until the next document or MPA; §5.3's clipping interval and §5.10's HRM input become that active period |
+| 14496-30 | §5.3, §5.9(1), §5.9(2) | times on the track timeline; begin may precede the sample; content may be duplicated in adjacent samples | **nothing** — packagers must stop clipping (§3.2) |
 | 14496-30 | §5.6 | sample "shall consist of an XML document" | under the new entry a sample may instead be a `ttmn` or `ttmb` box (§2.1); documents stay raw |
 | 14496-30 | §6.6 | sample is one `vtte` or ≥1 `vttc` | add `vttn` no-change box |
 | 14496-30 | §5.6 | "Every sample is therefore a sync sample" | require `trun`/`sdtp` sync signalling (Layer 2 only) |
@@ -1159,8 +1164,8 @@ LOCMAF as specified. Text profiles are unaffected, which is what this design tar
 3. **Is a subtitle `PART-TARGET` different from video's deployed anywhere?** The spec
    appears to permit it and no cross-rendition constraint was found in bis-15, but real
    players may assume alignment.
-4. ~~**Do deployed renderers handle a begin earlier than the sample** as 14496-30
-   Figure 1 describes — presenting as if seeked into the document — or do some treat the
+4. ~~**Do deployed renderers handle a begin earlier than the sample** as 14496-30 §5.3
+   Tables 1 and 2 describe — clipping the document to the sample — or do some treat the
    sample start as document time zero, Smooth Streaming style?~~ *Answered for both
    open-source players, and what it leaves behind is a fix rather than a question.*
    Neither dash.js nor shaka takes the sample start as time zero, so the Smooth
@@ -1188,7 +1193,7 @@ LOCMAF as specified. Text profiles are unaffected, which is what this design tar
    samples once a segment completes, so the stored artifact is conformant today and only
    the live wire form is novel. Unclipped documents need no rewriting; only the sample
    table changes.
-8. ~~**Do players honour §5.9(3) redundancy, or detect identical documents?**~~
+8. ~~**Do players honour §5.6 redundancy, or detect identical documents?**~~
    *Answered, and the answer costs §3.2 its parse-rate claim.* **Neither open-source
    player reads the sample flags at all**, so the redundancy marking reaches no
    decision: dash.js's `getSamplesInfo` keeps only `cts`, `duration`, `offset`, `size`

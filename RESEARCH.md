@@ -28,19 +28,22 @@ explosion but caps the achievable subtitle latency.
 
 ## 2. What the relevant standards currently provide
 
-### 2.1 ISO/IEC 14496-30:2018 (`stpp`)
+### 2.1 ISO/IEC 14496-30:2018 with Amd 1:2022 (`stpp`)
 
 - §5.6 — each sample is a complete TTML XML document.
-- §5.9 "Document temporal boundaries":
-  - §5.9.3: "If a sample contains the identical document to the prior sample,
-    it **may be marked as redundant**." The marking is 14496-12 §8.6.4's
-    `sample_has_redundancy = 1` together with `sample_depends_on = 2`, in
-    `sdtp` or in the fragment sample flags; §8.6.4 lets a receiver of a
-    non-audiovisual track discard such a sample and add its duration to the
-    previous one. Only helps when the document is byte-identical. In live it
-    never fires today only because packagers clip `begin`/`end` to the
-    segment; §5.9(1) permits a begin time outside the fragment, and unclipped
-    restated documents are identical (see `DESIGN-ll-paint-model.md` §3.2).
+- §5.6, added by Amd 1 (it was §5.9(3) before): "If a sample contains the
+  identical document to the prior sample, it **may be marked as redundant**."
+  The marking is 14496-12 §8.6.4's `sample_has_redundancy = 1` together with
+  `sample_depends_on = 2`, in `sdtp` or in the fragment sample flags; Amd 1
+  names the flag, and it and §8.6.4 let a receiver of a non-audiovisual track
+  discard such a sample and add its duration to the previous one. Only helps
+  when the document is byte-identical. In live it never fires today only
+  because packagers clip `begin`/`end` to the segment; §5.9(1) permits a begin
+  time outside the fragment, and unclipped restated documents are identical
+  (see `DESIGN-ll-paint-model.md` §3.2).
+- §5.9(3) — only one document is active at a time, clipped to its sample's
+  composition time and duration; the rewritten §5.3 and the new §5.10 apply
+  the same clipping.
 - §4.4 "Resources shared by multiple samples" — common items (fonts, images)
   may be stored in a `meta` box and referenced by URI from the XML. This is
   the *only* existing in-spec mechanism for sharing across samples, and it
@@ -141,7 +144,7 @@ In rough order from "off-the-shelf, no spec change" to "needs a new spec."
 
 ### A. Mark identical samples redundant
 
-**What:** Use 14496-30 §5.9.3 — when a fragment's document is byte-identical
+**What:** Use 14496-30 §5.6 — when a fragment's document is byte-identical
 to the previous one, mark it redundant.
 
 **Pros:** Already standardized; trivial to implement.

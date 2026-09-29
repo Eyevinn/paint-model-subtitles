@@ -35,7 +35,7 @@ the start time of sample"*.
 | Restated *timed* document byte-identical | yes | no — must be re-based | yes |
 | Document portable across a timeline shift | via edit list, as today | yes | yes |
 | Renderer must accept an external time origin | no | yes | yes |
-| Precedent | 14496-30 §5.9 as written | Smooth Streaming, RFC 8759, TTML2 Annex I | EN 303 560, `wvtt` `ctim` |
+| Precedent | 14496-30 §5.3 and §5.9 as written | Smooth Streaming, RFC 8759, TTML2 Annex I | EN 303 560, `wvtt` `ctim` |
 
 The unclipped track timeline wins on every row that matters. The only thing the others
 buy is portability across a timeline shift without an edit list, which `stpp` has never
@@ -67,7 +67,7 @@ caption.
   identically, exactly as at every ISD boundary inside one document today. There is no
   object to tear down.
 - The restatement case is already covered. Unclipped documents are byte-identical
-  (`DESIGN-ll-paint-model.md` §3), so the §5.9(3) redundancy flag or identical-document
+  (`DESIGN-ll-paint-model.md` §3), so the §5.6 redundancy flag or identical-document
   detection lets the receiver skip the whole document — stronger than matching one cue
   inside it.
 - The `wvtt` analogy is weaker than it looks. WebVTT renders cue objects with enter and

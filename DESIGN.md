@@ -100,22 +100,24 @@ in the sample table.
 
 ## 3. Open-ended intervals in `stpp`
 
-Two rules. One is already permitted; the other is the change.
+Two rules. One is already permitted; the other is the change. (14496-30 clause numbers
+refer to ISO/IEC 14496-30:2018 as amended by Amd 1:2022.)
 
 **Keep the true `begin`, and omit `end` while it is unknown.** 14496-30 §5.9(1) permits
-a begin time outside the fragment. §5.9(3) permits the same content in adjacent samples
-and lets an identical document be marked redundant. EBU Tech 3381 §6 requires content
-overlapping the sample to be present; DVB-DASH (TS 103 285) §11.7 says times need not be
-truncated; CMAF adds nothing. Only packager habit clips `begin` and `end` to the
+a begin time outside the fragment. §5.9(2) permits the same content in adjacent
+samples, and §5.6 lets an identical document be marked redundant. EBU Tech 3381 §6
+requires content overlapping the sample to be present; DVB-DASH (TS 103 285) §11.7 says
+times need not be truncated; CMAF adds nothing. Only packager habit clips `begin` and `end` to the
 segment, and that clipping is what makes consecutive payloads differ. Unclipped, a
 restated cue is byte-identical, the packager can mark it redundant —
 `sample_has_redundancy` in the sample flags, 14496-12 §8.6.4 — and the receiver may
 discard it and extend the previous sample.
 
 **A document stays active until the next document, or until the maximum period of
-activation (MPA) expires.** Today §5.9(4) confines a document to its sample's duration.
-The change: the active period ends at the composition time of the next content sample,
-or T_MPA after the last sample of any kind, whichever is earlier. T_MPA is carried in
+activation (MPA) expires.** Today §5.9(3) confines a document to its sample's duration,
+and §5.3 and §5.10 clip to the same interval. The change: the active period ends at the
+composition time of the next content sample, or T_MPA after the last sample of any kind,
+whichever is earlier. T_MPA is carried in
 the sample entry, 5 s as in DVB-TTML. No-change samples reset the MPA timer without
 superseding. This is ETSI EN 303 560 §5.2.3.3 ported from MPEG-2 TS to ISOBMFF, and RFC
 8759 §6 has the same rule for TTML over RTP. For every existing track, where samples
@@ -170,8 +172,9 @@ unchanged. `wvtt` already has this: its header lives in the sample entry.
 
 | Where | Change |
 |---|---|
-| ISO/IEC 14496-12, CMAF, HLS | nothing. 14496-12:2026 §8.8.18 adds `rsot`, which documents a repeated sample rather than removing it — an alternative to this design, not a companion (notes §3.6) |
-| 14496-30 §5.9(4) | a document is active until the next document or MPA |
+| ISO/IEC 14496-12, HLS | nothing. 14496-12:2026 §8.8.18 adds `rsot`, which documents a repeated sample rather than removing it — an alternative to this design, not a companion (notes §3.6) |
+| CMAF | nothing, when the `stpc` track is offered beside an `stpp` (`im1t`) track in the same selection set. An `stpc` track is not itself `im1t`, since not all its samples are IMSC documents (23000-19 §11.3.3), and the CMFHD presentation profiles require an `im1t` track when subtitles are present (§A.1.2–A.1.4). A CMAF media profile for `stpc` would let it stand alone |
+| 14496-30 §5.9(3), §5.3, §5.10 | a document is active until the next document or MPA, and §5.3's clipping and §5.10's HRM input follow that active period |
 | 14496-30 §5.6, §6.6 | new sample entries: documents raw as today, plus `ttmn` and `ttmb` boxes for `stpp` and `vttn` for `wvtt` |
 | 14496-30 §5.6 | non-sync signalling for `ttmn`, `ttmb` |
 | MP4RA, the MP4 registration authority | register the four-character codes (4CCs) |

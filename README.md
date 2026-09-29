@@ -132,7 +132,8 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for conventions.
 ## Standards referenced
 
 The documents cite ISO/IEC 14496-12, 14496-30, 23000-19 (CMAF), 23001-17 and
-23001-18 by clause number. These are copyrighted and are **not** included in
+23001-18 by clause number; 14496-30 clauses are those of the 2018 edition as amended
+by Amd 1:2022. These are copyrighted and are **not** included in
 this repository; obtain them from ISO. ETSI EN 303 560, the W3C IMSC
 specifications, the DASH-IF low-latency guidance, and the IETF drafts are
 publicly available and are linked from the documents' reference sections.

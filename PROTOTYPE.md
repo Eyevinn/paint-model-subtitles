@@ -107,7 +107,7 @@ Both players parse text tracks in JavaScript, outside MSE, so the changes are lo
 **dash.js**, `src/streaming/text/TextSourceBuffer.js`:
 
 - The TTML path hands the parser each sample's start and end, `sampleStart` and
-  `sampleStart + sample.duration`. That is 14496-30 §5.9(4) in code. For `stpc` the end
+  `sampleStart + sample.duration`. That is 14496-30 §5.9(3) in code. For `stpc` the end
   must stay open until the next document or MPA.
 - The same path adds each sample's range to `buffered`; no-change samples must still
   extend it, so the text track never becomes the gating track.
