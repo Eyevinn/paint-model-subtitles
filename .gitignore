@@ -5,6 +5,7 @@ references/
 
 # Local tooling state
 .claude/
+.playwright-mcp/
 .DS_Store
 *.swp
 *~
