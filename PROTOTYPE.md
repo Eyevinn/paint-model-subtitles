@@ -66,9 +66,10 @@ exists is marked below.
    the real change rate, and the restatement rate today's converters produce from the
    same capture (§12 question 1; §0.3 for Shaka Packager).
 7. **MoQ.** Run the same generator through moqlivemock and play it in warp-player; measure
-   LOCMAF object sizes at frame-rate cadence against §11.2. *The publishing side is done*:
-   moqlivemock serves all four tracks as CMAF and as LOCMAF, one object per video object
-   (§3). Playback in warp-player and the §11.2 measurement are not recorded here yet.
+   LOCMAF object sizes at frame-rate cadence against §11.2. *Publishing and playback are
+   done*: moqlivemock serves all four tracks as CMAF and as LOCMAF, one object per video
+   object, and warp-player v0.16.0 plays them and measures each track's bitrate and
+   parsing cost side by side (§3). The comparison with §11.2 is not recorded here yet.
 8. **Separately**, evaluate the MoQ sparse variant against §11.4's caveats. It is a
    different design, not a later stage of this one.
 
@@ -89,14 +90,15 @@ same code lineage as livesim2's. It publishes `stpp`, `stpc`, `wvtt` and `wvtc`,
 CMAF and as LOCMAF, eight tracks in all, in the CMSF namespaces but not the MSF one. Every
 subtitle track has the video's object rate: a group holds one chunk per video object, 25 a
 second, sent when the interval it covers ends. Its issue #140, from a Shaka Player
-maintainer, asked for LOCMAF subtitles; the paint model is what makes them worthwhile,
-since no-change objects at video cadence give LOCMAF's delta heads something to compress. warp-player has an MSE
-path for CMAF and LOCMAF and an overlay seam with CTA-608 as its first renderer; its
-issue #167 asks to show the seam fits WebVTT and IMSC, which is where a paint-model cue
-source would plug in. Both run publicly at https://moqlivemock.demo.osaas.io/ — the live
-publisher, LOCMAF, CMAF and LOC streams, and the browser player under `/warp-player/` —
-so a reviewer can see the MoQ side without building anything; the page is generated from
-the `moq-workspace` repository.
+maintainer, asked for LOCMAF subtitles and was closed on 2026-09-29; the paint model is
+what makes them worthwhile, since no-change objects at video cadence give LOCMAF's delta
+heads something to compress. warp-player has an MSE path for CMAF and LOCMAF, and from
+v0.16.0 renders the subtitle tracks, `stpc` and `wvtc` included: TTML through imscJS, as
+dash.js does, and WebVTT with its own renderer. Its issue #167, still open, asks to show
+that its overlay seam fits WebVTT, IMSC and ograf. Both run publicly at
+https://moqlivemock.demo.osaas.io/ — the live publisher, LOCMAF, CMAF and LOC streams, and
+the browser player under `/warp-player/` — so a reviewer can see the MoQ side without
+building anything; the page is generated from the `moq-workspace` repository.
 
 **LL-HLS.** None of the above serves HLS. The request-bound regime and the `PART-TARGET`
 questions (§12 questions 3 and 6) need an LL-HLS packager and player later.

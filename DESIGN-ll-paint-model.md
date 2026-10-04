@@ -6,12 +6,13 @@ one. Companion to `RESEARCH.md`, which surveys *size* reduction (approaches A–
 
 **The proposal.**
 
-1. **Paint model: signal changes when they happen.** A document is sent when a cue
+1. **Chunk subtitles like video and audio.** Keep the part or chunk cadence of the
+   video, down to single frames — sparse tracks are the wrong answer over HTTP (§1) —
+   and when nothing has changed say so in 8 bytes rather than repeating the document
+   (§2).
+2. **Paint model: signal changes when they happen.** A document is sent when a cue
    appears, changes, or is cleared — never to restate what is already on screen. The
    packager never waits for, guesses, or invents an end time (§0.2).
-2. **Allow frequent no-update signalling.** Keep the regular part or chunk cadence the
-   player needs — sparse tracks are the wrong answer over HTTP (§1) — and when nothing
-   has changed say so in 8 bytes rather than repeating the document (§2).
 3. **Make TTML intervals in `stpp` open-ended.** A cue keeps its true `begin` and has no
    `end` until it is cleared, and a document stays active until the next one supersedes
    it. The first is already permitted — packagers only have to stop clipping (§3) — and
@@ -29,9 +30,21 @@ B, so the subtitle cadence can match the video frame rate (§11).
 
 ## 0. Goal
 
-In low-latency (LL) CMAF, video is chunked at frame granularity (20–40 ms) inside a 2 s
-segment. Subtitles today force a choice: chunk them too (a complete TTML document per
-chunk — ~280 kbps and 25 XML parses/second, §9), or don't chunk them (the DASH-IF LL
+In low-latency (LL) CMAF, video and audio are chunked at frame granularity (20–40 ms)
+inside a 2 s segment, and subtitles should be chunked the same way, for two reasons:
+
+- **Latency.** A live subtitle chunk can be written only when the interval it covers
+  ends, since a caption can appear anywhere inside it. A track with one fragment per
+  segment is therefore a segment late, and players that wait for every track hold video
+  and audio back with it.
+- **Alignment.** When all tracks share the chunk and segment boundaries, each interval
+  is complete in every track at the same time. LL-HLS requires the part cadence anyway
+  (§1.1). Over MoQ with CMSF, a subtitle track at the video cadence has one object per
+  video object and starts a group with each video group, so a subscriber that joins at
+  a group boundary gets a sync sample in every track.
+
+Subtitles today force a choice: chunk them too (a complete TTML document per chunk —
+~280 kbps and 25 XML parses/second, §9), or don't chunk them (the DASH-IF LL
 recommendation), in which case subtitles lag video by up to a segment. There is nothing
 in between today. The design makes the cadence a continuum: the subtitle track can
 follow the video down to individual frame fragments at 8 bytes per unchanged fragment,

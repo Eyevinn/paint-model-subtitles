@@ -9,12 +9,12 @@ out are in [`ALTERNATIVES.md`](ALTERNATIVES.md); the prototype and test plan is 
 
 **In four points**
 
-1. **Paint model: signal changes when they happen.** A document is sent when a cue
+1. **Chunk subtitles like video and audio.** Keep the part or chunk cadence of the
+   video, down to single frames, and when nothing has changed say so in 8 bytes instead
+   of repeating the document.
+2. **Paint model: signal changes when they happen.** A document is sent when a cue
    appears, changes, or is cleared, and at no other time. The packager never waits for,
    guesses, or invents an end time.
-2. **Allow frequent no-update signalling.** Keep the regular part or chunk cadence the
-   player needs, and when nothing has changed say so in 8 bytes instead of repeating the
-   document.
 3. **Make TTML intervals in `stpp` open-ended.** A cue keeps its true `begin` and has no
    `end` until it is cleared, and a document stays active until the next one supersedes
    it. The first is already permitted by ISO/IEC 14496-30; the second is the one change
@@ -26,10 +26,12 @@ The cadence is then a continuum, not a choice between whole segments and a docum
 frame: the subtitle track follows the video down to individual frame fragments, at 8
 bytes per unchanged fragment. What bounds the cadence differs by transport (§2.1, §7).
 LL-HLS is bounded by requests — a playlist reload and a part fetch per part — so 250 ms
-parts are the sensible match there. LL-DASH streams the chunks of a segment in one
-response and is bounded only by the ~100 B CMAF chunk header, which a LOCMAF-style (Low
-Overhead CMAF) compact chunk head could cut to ~10 B. Over MoQ with LOCMAF that is the
-native form: a frame-level subtitle update costs ~10 B and a track at 25 fps ~2 kbps.
+parts are the sensible match there. LL-DASH and MoQ are alike: LL-DASH streams the
+chunks of a segment in one response and MoQ sends each chunk as an object, so neither
+needs a request per chunk and both are bounded only by the ~100 B CMAF chunk header.
+MoQ with CMSF can also carry the chunks as LOCMAF (Low Overhead CMAF), which cuts that
+header to a few bytes: a frame-level subtitle update then costs ~10 B and a track at
+25 fps ~2 kbps. Nothing equivalent exists for LL-DASH yet.
 
 ## 1. The problem
 

@@ -5,13 +5,16 @@
 sample in the four parts where they do
 not.](figures/paint-model-cadence.svg)
 
-Low-latency streaming forces a choice on subtitles: send a complete IMSC
-document every chunk — ~280 kbps and 25 XML parses a second — or let the text
-fall up to a segment behind the picture. This proposal ends the choice with an
-8-byte "nothing changed" sample. IMSC and WebVTT are unchanged, a teletext or
-live-subtitling source reaches the player at video's own cadence, and a client
-parses only when the words actually change. Published to collect comments
-before any standards contribution.
+Low-latency streaming sends video and audio in CMAF chunks, down to single
+frames over LL-DASH and MoQ. Subtitles should be chunked the same way, so that
+the text arrives with the picture it belongs to and every track has the same
+chunk and segment boundaries. Today that costs a complete IMSC document in every
+chunk — ~280 kbps and 25 XML parses a second at frame cadence — so subtitles are
+left unchunked and fall up to a segment behind the picture. This proposal makes
+an unchanged subtitle chunk an 8-byte "nothing changed" sample. IMSC and WebVTT
+are unchanged, a teletext or live-subtitling source reaches the player at video's
+own cadence, and a client parses only when the words actually change. Published
+to collect comments before any standards contribution.
 
 The changes are small, and they land in one standard. ISO/IEC 14496-30 gains
 one rule — a document stays active until the next one supersedes it — and new
@@ -24,12 +27,12 @@ today, and already serving live streams in
 
 ## The proposal
 
-1. **Paint model: signal changes when they happen.** A document is sent when a
+1. **Chunk subtitles like video and audio.** Keep the part or chunk cadence of
+   the video, down to single frames, and when nothing has changed say so in 8
+   bytes instead of repeating the document.
+2. **Paint model: signal changes when they happen.** A document is sent when a
    cue appears, changes, or is cleared, and at no other time. The packager never
    waits for, guesses, or invents an end time.
-2. **Allow frequent no-update signalling.** Keep the regular part or chunk
-   cadence the player needs, and when nothing has changed say so in 8 bytes
-   instead of repeating the document.
 3. **Make TTML intervals in `stpp` open-ended.** A cue keeps its true `begin`
    and has no `end` until it is cleared, and a document stays active until the
    next one supersedes it. The first is already permitted by ISO/IEC 14496-30;
@@ -43,22 +46,29 @@ segments and nothing: the track can follow the video down to individual frame
 fragments, at 8 bytes per unchanged fragment. What bounds the cadence differs by
 transport. LL-HLS is bounded by requests, since every part costs a playlist
 reload and a part fetch, so 250 ms parts are the sensible match there. LL-DASH
-streams the chunks of a segment in one response and is bounded only by the ~100
-B CMAF chunk header, which a LOCMAF-style (Low Overhead CMAF) compact chunk head
-could cut to about 10 bytes. Over MoQ with LOCMAF that is the native form: a
-frame-level subtitle update costs about 10 bytes, and a track at 25 fps about 2
-kbps.
+and MoQ are alike: LL-DASH streams the chunks of a segment in one response, and
+MoQ sends each chunk as an object, so neither needs a request per chunk and both
+can run at single frames, bounded only by the ~100 B CMAF chunk header. They
+differ in one thing. MoQ with CMSF can carry the chunks as LOCMAF (Low Overhead
+CMAF), which cuts that header to a few bytes: a frame-level subtitle update then
+costs about 10 bytes, and a track at 25 fps about 2 kbps. Nothing equivalent
+exists for LL-DASH yet.
 
 `DESIGN.md` is the short design; the full notes hold the rationale and budgets,
 and `ALTERNATIVES.md` the roads not taken.
 
 ## The problem
 
-Low-latency CMAF chunks video at frame granularity inside a 2 s segment.
-Subtitles today must either be chunked the same way, which costs a complete TTML
-document per chunk, or not chunked at all, which is the DASH-IF advice and
-leaves subtitles lagging video by up to a segment. Today there is nothing in
-between. The live sources, teletext, DVB subtitles, CTA-608/708 and live
+Low-latency CMAF chunks video at frame granularity inside a 2 s segment, and
+subtitles should follow. A live subtitle chunk can be written only when the
+interval it covers ends, so a subtitle track with one fragment per segment is a
+segment late, and players that wait for every track hold video and audio back
+with it. Chunked at the video cadence, each interval is complete in every track
+at the same time, and over MoQ each subtitle object goes out with its video
+object. Subtitles today must either be chunked the same way, which costs a
+complete TTML document per chunk, or not chunked at all, which is the DASH-IF
+advice and leaves subtitles lagging video by up to a segment. Today there is
+nothing in between. The live sources, teletext, DVB subtitles, CTA-608/708 and live
 captioning, are paint-model: state persists until replaced, and a cue's end is
 unknown when it starts. ISOBMFF timed text is interval-model: a document lives
 exactly as long as its sample. Converting between the two is what makes today's
@@ -92,8 +102,8 @@ listed in an open mp4ff pull request,
 [`feat/paint-model-subtitles`](https://github.com/Dash-Industry-Forum/livesim2/tree/feat/paint-model-subtitles)
 branch, and modified dash.js and
 [Shaka Player](https://github.com/Eyevinn/shaka-player/tree/feat/paint-model-subtitles)
-play them. moqlivemock publishes all four over MoQ, as CMAF and as LOCMAF (see
-[Demo](#demo)). The maximum period of activation (§7) is not
+play them. moqlivemock publishes all four over MoQ, as CMAF and as LOCMAF, and
+warp-player plays them (see [Demo](#demo)). The maximum period of activation (§7) is not
 implemented yet. `PROTOTYPE.md` says what is measured and what is not.
 
 ## Demo
@@ -128,8 +138,9 @@ variants live: `stpp`, `stpc`, `wvtt` and `wvtc`, each as CMAF and as LOCMAF
 namespaces, `mlm/cmsf/clear` and the two encrypted ones, and not in the MSF namespace
 `mlm/msf/clear`, which carries only LOC video and audio. A subtitle group holds one
 chunk per video object, 25 a second, and each chunk is sent when the interval it
-covers ends. The browser player is
-[warp-player](https://moqlivemock.demo.osaas.io/warp-player/).
+covers ends. [warp-player](https://moqlivemock.demo.osaas.io/warp-player/), from
+v0.16.0, plays any one of them in step with the picture, and measures the bitrate
+and parsing cost of all subtitle tracks side by side.
 
 ## How to comment
 
