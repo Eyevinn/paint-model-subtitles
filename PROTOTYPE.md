@@ -5,15 +5,15 @@ How to try the paint-model design and measure it. The design itself is in
 [`DESIGN-ll-paint-model.md`](DESIGN-ll-paint-model.md). Section numbers below refer to
 the full notes.
 
-**Status.** Step 3 is done and steps 1, 4 and 7 are partly done; the rest is plan. What
-exists is marked below.
+**Status.** Steps 1 to 5 and 7 are done, except the maximum period of activation (§7),
+which no implementation has yet. Steps 6 and 8 are plan. What exists is marked below.
 
 ## 1. What to measure
 
 - **Bytes per second** for the subtitle track, against the §9 table: naive chunked
   `stpp`, unchunked 1 s segments, and the design with and without the head/body split.
-- **Samples per part** and the `trun` layout, to confirm one document per part for `stpp`
-  and the split only for `wvtt` (§2.3, §5).
+- **Samples per chunk** and the `trun` layout, to confirm one document per chunk for
+  `stpp` and the split only for `wvtt` (§2.3, §5).
 - **XML parses per second** at the receiver, against §9.1: once per content change, not
   once per chunk, and zero for restated identical documents.
 - **Receiver behaviour** on the new sample entries, on `ttmn` and `vttn`, and on a document
@@ -23,8 +23,8 @@ exists is marked below.
 
 1. **ISOBMFF library.** Add the `stpc` and `wvtc` sample entries and the `ttmn`, `ttmb`
    and `vttn` boxes to mp4ff, write multi-sample fragments (I-sample plus no-change
-   samples) and confirm they round-trip with correct sample times. **Done on a branch**,
-   in [mp4ff #590](https://github.com/Eyevinn/mp4ff/pull/590), open and unmerged:
+   samples) and confirm they round-trip with correct sample times. **Done**, in
+   [mp4ff #590](https://github.com/Eyevinn/mp4ff/pull/590), released in v0.57.0:
    `stpc` and `wvtc` reuse `StppBox` and `WvttBox` with a name field, as the visual
    sample entries already do; `ttmn`, `vttn` and `ttmb` are whole-sample boxes; a sample
    is one of them only if its first eight bytes are that box header with a size equal to
@@ -36,9 +36,14 @@ exists is marked below.
    this one: https://github.com/Eyevinn/mp4ff/pull/589
 2. **Generator.** A paint-model subtitle track from a synthetic source whose text changes
    every N seconds: an I-sample per segment, a document per change — for `stpp` one
-   document per part with true `begin` and `end`, for `wvtt` a split part — and a
+   document per chunk with true `begin` and `end`, for `wvtt` a split chunk — and a
    no-change sample per chunk at cadence `C`. Produce today's packaging from the same
-   source as the baseline.
+   source as the baseline. **Done**, in livesim2 v1.14.0
+   ([#345](https://github.com/Dash-Industry-Forum/livesim2/pull/345)) and moqlivemock
+   v0.16.0. livesim2's `timesubsstpc_` and `timesubswvtc_` generate the same cues on the
+   same timeline as `timesubsstpp_` and `timesubswvtt_`; `;nochange=0` is a control that
+   differs from `stpp` only in the 4CC. moqlivemock's `-subsstpc` and `-subswvtc` do the
+   same over MoQ.
 3. **Stop clipping, measured alone.** On the baseline stream, compare the
    identical-document rate and compression with clipped and unclipped `begin`/`end`
    (§3.2). Needs no new box and nothing on the sending side; rendering it correctly on
@@ -58,10 +63,18 @@ exists is marked below.
    tracks. *The probe is done for unclipped chunked tracks*, against livesim2 #337, and
    answers §12 questions 4 and 8: dash.js renders them correctly, one cue per real cue;
    shaka clips to the segment rather than the sample and shows two captions at once;
-   neither reads the sample flags, so both re-parse every sample. The fork itself is not
-   started.
+   neither reads the sample flags, so both re-parse every sample. **The fork is done**,
+   except the MPA: a modified dash.js, served by the demo page, and
+   [Shaka Player](https://github.com/Eyevinn/shaka-player/tree/feat/paint-model-subtitles)
+   play `stpc` and `wvtc`, and only tracks that declare them get the new behaviour. A
+   no-change sample restates the cues already parsed and parses nothing, and the pages
+   count what each player parses: 20 documents per 2 s segment for `stpp` at 100 ms
+   chunks, 2.0 for `stpc` with `ttmb`.
 5. **Layer 2.** `ttmb` body samples, `<head>` splicing from the segment's I-sample, and
-   the non-sync flags (§6).
+   the non-sync flags (§6). **Done**: livesim2 sends `ttmb` with `;body=1` and marks
+   no-change and body samples `sample_is_non_sync_sample = 1` and `sample_depends_on = 1`;
+   moqlivemock sends `ttmb` by default (`-subsstpcbody`); and dash.js, Shaka Player and
+   warp-player splice the body into the head of the segment's or group's first document.
 6. **Real captures.** Teletext, DVB subtitles and CTA-608, not subtitle files: measure
    the real change rate, and the restatement rate today's converters produce from the
    same capture (§12 question 1; §0.3 for Shaka Packager).
@@ -69,7 +82,19 @@ exists is marked below.
    LOCMAF object sizes at frame-rate cadence against §11.2. *Publishing and playback are
    done*: moqlivemock serves all four tracks as CMAF and as LOCMAF, one object per video
    object, and warp-player v0.16.0 plays them and measures each track's bitrate and
-   parsing cost side by side (§3). The comparison with §11.2 is not recorded here yet.
+   parsing cost side by side (§3). **Measured**, in moqlivemock's README, on its 25 fps
+   content with 1 s groups and a cue for 900 ms of every second:
+
+   | Track | CMAF | LOCMAF |
+   |---|---|---|
+   | `stpp` | 317 kbps | 296 kbps |
+   | `stpc` | 38 kbps | 17 kbps |
+   | `wvtt` | 35 kbps | 14 kbps |
+   | `wvtc` | 25 kbps | 4.5 kbps |
+
+   The CMAF figure for `wvtc` matches §11.2's ~24 kbps at 40 ms. The LOCMAF figure is
+   above §11.2's ~2 kbps, which is for a track where nothing changes; here a cue starts
+   and ends every second, and every 1 s group starts with a full chunk.
 8. **Separately**, evaluate the MoQ sparse variant against §11.4's caveats. It is a
    different design, not a later stage of this one.
 
@@ -77,13 +102,11 @@ Steps 1 to 4 need no spec change to try. Step 3 needs none at all to measure.
 
 ## 3. Test environments
 
-**DASH: livesim2** (DASH-Industry-Forum). It already synthesises `stpp` and `wvtt`
-time-subtitle tracks on the fly (`timesubsstpp_<langs>`, `timesubswvtt_<langs>`), one
-document per segment, and it chunks audio and video for low latency (`chunkdur`). The text
-tracks are not chunked today, which is the gap to fill: a `paintsubs` variant of the
-generator, with the text track honouring `chunkdur` and chunked transfer. The existing
-`timesubs` tracks with the same content are the baseline, so the §9 comparison is two URL
-parameters side by side. It is DASH only.
+**DASH: livesim2** (DASH-Industry-Forum). It synthesises `stpp` and `wvtt`
+time-subtitle tracks on the fly (`timesubsstpp_<langs>`, `timesubswvtt_<langs>`), and
+since #337 chunks them like audio and video when `chunkdur_` is set. Since v1.14.0,
+`timesubsstpc_<langs>` and `timesubswvtc_<langs>` generate the paint-model tracks from the
+same cues, so the §9 comparison is two URL parameters side by side. It is DASH only.
 
 **MoQ: moqlivemock and warp-player** (Eyevinn). moqlivemock's subtitle generator is the
 same code lineage as livesim2's. It publishes `stpp`, `stpc`, `wvtt` and `wvtc`, each as

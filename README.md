@@ -96,11 +96,10 @@ fragment where the cue ends, and the redundancy marking — is implemented and s
 live streams in [livesim2](https://github.com/Dash-Industry-Forum/livesim2/pull/337),
 which chunks its generated `stpp` and `wvtt` tracks at the video chunk cadence. The §2
 boxes have library support — `stpc`, `wvtc`, `ttmn`, `ttmb` and `vttn` read, written and
-listed in an open mp4ff pull request,
-[#590](https://github.com/Eyevinn/mp4ff/pull/590). livesim2 generates `stpc` and
-`wvtc` tracks on its
-[`feat/paint-model-subtitles`](https://github.com/Dash-Industry-Forum/livesim2/tree/feat/paint-model-subtitles)
-branch, and modified dash.js and
+listed in mp4ff since v0.57.0
+([#590](https://github.com/Eyevinn/mp4ff/pull/590)). livesim2 generates `stpc` and
+`wvtc` tracks since v1.14.0
+([#345](https://github.com/Dash-Industry-Forum/livesim2/pull/345)), and modified dash.js and
 [Shaka Player](https://github.com/Eyevinn/shaka-player/tree/feat/paint-model-subtitles)
 play them. moqlivemock publishes all four over MoQ, as CMAF and as LOCMAF, and
 warp-player plays them (see [Demo](#demo)). The maximum period of activation (§7) is not
