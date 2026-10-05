@@ -9,8 +9,8 @@ out are in [`ALTERNATIVES.md`](ALTERNATIVES.md); the prototype and test plan is 
 
 **In four points**
 
-1. **Chunk subtitles like video and audio.** Keep the part or chunk cadence of the
-   video, down to single frames, and when nothing has changed say so in 8 bytes instead
+1. **Chunk subtitles like video and audio.** Keep the chunk cadence of the video,
+   down to single frames, and when nothing has changed say so in 8 bytes instead
    of repeating the document.
 2. **Paint model: signal changes when they happen.** A document is sent when a cue
    appears, changes, or is cleared, and at no other time. The packager never waits for,
@@ -23,8 +23,8 @@ out are in [`ALTERNATIVES.md`](ALTERNATIVES.md); the prototype and test plan is 
    under a new sample entry so that legacy players never select the track.
 
 The cadence is then a continuum, not a choice between whole segments and a document per
-frame: the subtitle track follows the video down to individual frame fragments, at 8
-bytes per unchanged fragment. What bounds the cadence differs by transport (§2.1, §7).
+frame: the subtitle track follows the video down to single-frame chunks, at 8 bytes per
+unchanged chunk. What bounds the cadence differs by transport (§2.1, §7).
 LL-HLS is bounded by requests — a playlist reload and a part fetch per part — so 250 ms
 parts are the sensible match there. LL-DASH and MoQ are alike: LL-DASH streams the
 chunks of a segment in one response and MoQ sends each chunk as an object, so neither
@@ -58,19 +58,19 @@ practice to restate an unchanged cue in every chunk. That restatement is the cos
 | **I-sample** | first in every segment | complete document, `<head>` always present | current state, for tune-in |
 | **P-sample** | a cue appears or changes | complete document, or body only (§5) | new state supersedes the old |
 | **Clear** | a cue is erased | a document giving the cue its `end`, or an empty document / `vtte` | nothing on screen |
-| **No-change** | every other part or chunk | 8-byte box | the active document continues |
+| **No-change** | every other chunk | 8-byte box | the active document continues |
 
-The cadence is regular and matched to the video part or chunk cadence, whatever that is:
+The cadence is regular and matched to the video chunk cadence, whatever that is:
 250 ms LL-HLS parts, 100 ms LL-DASH chunks, or individual frames over MoQ (§7). LL-HLS
 requires a part every part target duration, and over HTTP the cadence is the only signal
 that the track is still alive; a subtitle track coarser than video also becomes the
-latency floor for players that wait for every track. Every part carries at least one
+latency floor for players that wait for every track. Every chunk carries at least one
 sample with a real, non-zero duration, so the timeline tiles exactly and every CMAF
 timing rule holds.
 
-A change lands at its true time, not quantised to the part grid, and `stpp` needs
-nothing new for that: one document per part, as today, with the cue's `begin` or `end`
-at the exact time inside the part. `wvtt` has no internal timing, so there the part is
+A change lands at its true time, not quantised to the chunk grid, and `stpp` needs
+nothing new for that: one document per chunk, as today, with the cue's `begin` or `end`
+at the exact time inside the chunk. `wvtt` has no internal timing, so there the chunk is
 split into a no-change sample up to the change and a cue sample from it, for the cost of
 one extra `trun` entry. The packager may cap the content update rate — 2 to 4 documents
 per second is plenty for word-by-word captioning — by holding a change until the cap
@@ -78,27 +78,28 @@ allows. That is policy and needs no signalling.
 
 ### 2.2 Worked example
 
-2 s segments, 250 ms parts. Nothing is on screen at 10.00. A cue appears at 10.30 with an
-unknown end and is cleared at 13.10.
+2 s segments and 250 ms chunks, so each segment has eight chunks, numbered 1 to 8 below.
+Nothing is on screen at 10.00. A cue appears at 10.30 with an unknown end and is cleared
+at 13.10.
 
-| Part at | Content |
-|---|---|
-| 10.00 | I-sample: `<head>` + empty `<body>` |
-| 10.25 | P-sample: `<p begin="10.3s">…</p>`, no `end` — the cue appears 50 ms into the part, placed by its own `begin` |
-| 10.50 – 11.75 | six no-change samples, 8 B each — the cue stays up |
-| 12.00 | I-sample: the same document, byte for byte; may be marked redundant |
-| 12.25 – 12.75 | no-change |
-| 13.00 | P-sample: `<p begin="10.3s" end="13.1s">…</p>` — the end is known when the part is written, so it is written; after 13.10 the document shows nothing |
-| 13.25 – 13.75 | no-change |
+| Segment | Chunk | Chunk starts at | Content |
+|---|---|---|---|
+| 1 | 1 | 10.00 | I-sample: `<head>` + empty `<body>` |
+| 1 | 2 | 10.25 | P-sample: `<p begin="10.3s">…</p>`, no `end` — the cue appears 50 ms into the chunk, placed by its own `begin` |
+| 1 | 3 – 8 | 10.50 – 11.75 | six no-change samples, 8 B each — the cue stays up |
+| 2 | 1 | 12.00 | I-sample: the same document, byte for byte; may be marked redundant |
+| 2 | 2 – 4 | 12.25 – 12.75 | three no-change samples — the cue stays up |
+| 2 | 5 | 13.00 | P-sample: `<p begin="10.3s" end="13.1s">…</p>` — the end is known when the chunk is written, so it is written; after 13.10 the document shows nothing |
+| 2 | 6 – 8 | 13.25 – 13.75 | three no-change samples — nothing on screen |
 
-Every part carries exactly one sample, as `stpp` does today; the changes at 10.30 and
-13.10 are placed by the documents' own timing. The cue's `end` is written only once it
-is known: absent at 10.25, present at 13.00. The I-sample at 12.00 has a begin time
-outside its own segment, which §3 shows is permitted, and the same bytes as the sample
-at 10.25, so a receiver already holding it skips the parse. A receiver tuning in at
-12.00 parses it and shows the cue. A `wvtt` track would instead split the parts at 10.25
-and 13.00 into a no-change or empty sample and a cue sample, since its timing lives only
-in the sample table.
+Every chunk is one movie fragment with exactly one sample, as for `stpp` today; the
+changes at 10.30 and 13.10 are placed by the documents' own timing. The cue's `end` is
+written only once it is known: absent at 10.25, present at 13.00. The I-sample at 12.00
+has a begin time outside its own segment, which §3 shows is permitted, and the same
+bytes as the sample at 10.25, so a receiver already holding it skips the parse. A
+receiver tuning in at 12.00 parses it and shows the cue. A `wvtt` track would instead
+split the chunks at 10.25 and 13.00 into a no-change or empty sample and a cue sample,
+since its timing lives only in the sample table.
 
 ## 3. Open-ended intervals in `stpp`
 
@@ -185,7 +186,7 @@ unchanged. `wvtt` already has this: its header lives in the sample entry.
 ## 7. What it costs and saves
 
 2 s segments, a 1.3 kB IMSC document measured on a real teletext-derived EBU-TT-D track,
-a state change every ~1.5 s, 250 ms parts. Full derivation and inputs in the notes, §9.
+a state change every ~1.5 s, 250 ms chunks. Full derivation and inputs in the notes, §9.
 
 | Scheme | Update delay | Bitrate | XML parses/s |
 |---|---|---|---|
@@ -195,7 +196,7 @@ a state change every ~1.5 s, 250 ms parts. Full derivation and inputs in the not
 | This design, `stpp`, head/body split | 250 ms | ~11 kbps | ~0.65 |
 | This design, `wvtt` | 250 ms | ~4.7 kbps | — |
 
-The container costs ~120 B per part, so ~3.8 kbps is the floor at this cadence over
+The container costs ~120 B per chunk, so ~3.8 kbps is the floor at this cadence over
 HTTP, and a full I-sample per 2 s segment adds ~5.1 kbps for `stpp` whatever else is
 done — which is why the head/body split gains little at this update rate and much more
 as updates get faster (§9). An idle track still pays a head every segment: ~7.9 kbps
