@@ -123,8 +123,9 @@ composition time of the next content sample, or T_MPA after the last sample of a
 whichever is earlier. T_MPA is carried in
 the sample entry, 5 s as in DVB-TTML. No-change samples reset the MPA timer without
 superseding. This is ETSI EN 303 560 §5.2.3.3 ported from MPEG-2 TS to ISOBMFF, and RFC
-8759 §6 has the same rule for TTML over RTP. For every existing track, where samples
-tile the timeline, the rule gives exactly today's behaviour.
+8759 §6 has the same rule for replacing one document with the next in TTML over RTP,
+without the MPA. For every existing track, where samples tile the timeline, the rule
+gives exactly today's behaviour.
 
 A document with internal timing still plays out its own intermediate synchronic
 documents — ISDs, the successive presentation states a TTML processor computes as
